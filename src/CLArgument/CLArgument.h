@@ -9,15 +9,16 @@
 
 namespace cpp_cli {
 template <typename T>
-std::shared_ptr<T> parse(const char *) {
-  static_assert(
-      std::is_same<T, T>::value,
-      "Please provide a parse implementation that returns a shared ptr of type () with signature "
-      "std::shared_ptr<your-type>(const char*)\n"
-  );
+std::shared_ptr<T> parse(const char *);
+// {
+//   static_assert(
+//       false,
+//       "Please provide a parse implementation that returns a shared ptr of type () with signature "
+//       "std::shared_ptr<your-type>(const char*)\n"
+//   );
 
-  return std::shared_ptr<T>{};
-}
+//   return std::shared_ptr<T>{};
+// }
 
 template <typename ValueType>
 class CL_Argument {
