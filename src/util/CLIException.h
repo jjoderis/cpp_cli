@@ -17,6 +17,9 @@ class CLIException : std::exception {
   std::string m_message;
 };
 
+class ParseException : public CLIException {};
+class ValidationException : public CLIException {};
+
 };  // namespace cpp_cli
 
 #endif

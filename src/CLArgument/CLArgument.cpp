@@ -6,7 +6,8 @@ namespace cpp_cli {
 // TODO: maybe do some error handling and validation of when parsing the types
 template <>
 std::shared_ptr<int> parse<int>(const char *val) {
-  return std::make_shared<int>(atoi(val));
+  std::string toParse{val};
+  return std::make_shared<int>(std::stoi(toParse));
 }
 template <>
 std::shared_ptr<float> parse<float>(const char *val) {

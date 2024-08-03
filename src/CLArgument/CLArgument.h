@@ -1,6 +1,7 @@
 #ifndef CL_ARGUMENT_H
 #define CL_ARGUMENT_H
 
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -26,6 +27,7 @@ class CL_Argument {
   const char *longOpt;
   char shortOpt;
   std::string description;
+  std::function<void(const ValueType &)> validator;
   std::shared_ptr<ValueType> value{};
 
   CL_Argument() = delete;
@@ -39,6 +41,8 @@ class CL_Argument {
   bool hasDescription() const { return !description.empty(); }
 
   bool isRequired() const { return m_required; }
+
+  bool hasValidator() const { return validator != nullptr; }
 
   std::string getManualString(int margin = 2) const {
     std::string marg{};

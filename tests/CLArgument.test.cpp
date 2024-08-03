@@ -103,4 +103,8 @@ TEST(Argument_TEST, parse_test) {
   // it throws if a non boolean arg is required but not found in the program call
   cpp_cli::RequiredArgument<int> l{"int4"};
   EXPECT_THROW(parseArgFromCL(argc4, cl4, l), cpp_cli::CLIException);
+
+  // it throws if the parse function for the type of the arg is unable to parse the value after the flag
+  cpp_cli::OptionalArgument<int> m{"float"};
+  EXPECT_THROW(parseArgFromCL(argc2, cl2, m), cpp_cli::ParseException);
 }
