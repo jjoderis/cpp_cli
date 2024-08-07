@@ -106,5 +106,22 @@ TEST(Argument_TEST, parse_test) {
 
   // it throws if the parse function for the type of the arg is unable to parse the value after the flag
   cpp_cli::OptionalArgument<int> m{"float"};
-  EXPECT_THROW(parseArgFromCL(argc2, cl2, m), cpp_cli::ParseException);
+  EXPECT_THROW(parseArgFromCL(argc2, cl2, m), cpp_cli::FlagException);
+  // this tests _that_ the expected exception is thrown
+  EXPECT_THROW(
+      {
+        try {
+          parseArgFromCL(argc2, cl2, m);
+        } catch (const cpp_cli::FlagException &e) {
+          // and this tests that it has the correct message
+          EXPECT_STREQ(
+              "Ran into an error when parsing the value for flag --float. (Original Error: The given argument value "
+              "contains non numeric elements)",
+              e.what()
+          );
+          throw;
+        }
+      },
+      cpp_cli::FlagException
+  );
 }

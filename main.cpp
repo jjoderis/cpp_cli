@@ -7,6 +7,7 @@
 enum ArgNames {
   Width,
   Height,
+  Float,
   Name,
 };
 
@@ -19,13 +20,15 @@ int main(int argc, const char **argv) {
         argv,
         cpp_cli::NamedOptionalArgument<ArgNames, Height, int>{"height"},
         cpp_cli::NamedOptionalArgument<ArgNames, Width, int>{"width"},
+        cpp_cli::NamedOptionalArgument<ArgNames, Float, float>{"float"},
         cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>{"name", 'n'},
-        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{nullptr, 'a'}
+        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'}
     );
+
     auto args = std::get<0>(res);
-    std::cout << args.getArg<ArgNames, Height>().hasValidator() << '\n';
+    std::cout << args.getValue<ArgNames, Float>() << '\n';
   } catch (cpp_cli::CLIException &err) {
-    std::cout << err.getMessage() << '\n';
+    std::cout << err.what() << '\n';
     exit(EXIT_FAILURE);
   }
 
