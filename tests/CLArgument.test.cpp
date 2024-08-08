@@ -115,10 +115,33 @@ TEST(Argument_TEST, parse_test) {
         } catch (const cpp_cli::FlagException &e) {
           // and this tests that it has the correct message
           EXPECT_STREQ(
-              "Ran into an error when parsing the value for flag --float. (Original Error: The given argument value "
-              "contains non numeric elements)",
+              "Ran into an error when parsing the value for flag --float. (Original Error: Invalid argument (12.5) for "
+              "an argument of type int.)",
               e.what()
           );
+          throw;
+        }
+      },
+      cpp_cli::FlagException
+  );
+
+  // it accepts a validator function that get the parsed value and the flag that was parsed and can be used to throw an
+  // error when the value is not as expected
+  cpp_cli::OptionalArgument<float>
+      n{"float", 0, "", nullptr, [](const float &val, const std::string &parsedLongFlag, char parsedShortFlag) {
+          if (val < 0 || val > 1)
+            throw cpp_cli::FlagException(
+                "The value for %s should be in the range [0, 1]", "", parsedLongFlag, parsedShortFlag
+            );
+        }};
+  // this tests _that_ the expected exception is thrown
+  EXPECT_THROW(
+      {
+        try {
+          parseArgFromCL(argc2, cl2, n);
+        } catch (const cpp_cli::FlagException &e) {
+          // and this tests that it has the correct message
+          EXPECT_STREQ("The value for --float should be in the range [0, 1]", e.what());
           throw;
         }
       },

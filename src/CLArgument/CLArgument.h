@@ -27,7 +27,6 @@ class CL_Argument {
   const char *longOpt;
   char shortOpt;
   std::string description;
-  std::function<void(const ValueType &)> validator;
   std::shared_ptr<ValueType> value{};
 
   CL_Argument() = delete;
@@ -42,7 +41,7 @@ class CL_Argument {
 
   bool isRequired() const { return m_required; }
 
-  bool hasValidator() const { return validator != nullptr; }
+  bool hasValidator() const { return m_validator != nullptr; }
 
   std::string getManualString(int margin = 2) const {
     std::string marg{};
@@ -80,9 +79,19 @@ class CL_Argument {
     };
   }
 
+  void validate(const std::string &parsedLongFlag, char parsedShortFlag) {
+    if (hasValidator()) m_validator(*value.get(), parsedLongFlag, parsedShortFlag);
+  }
+
  protected:
-  CL_Argument(const char *longOpt, char shortOpt, const std::string &d, bool required)
-      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, m_required{required} {
+  CL_Argument(
+      const char *longOpt,
+      char shortOpt,
+      const std::string &d,
+      bool required,
+      std::function<void(const ValueType &, const std::string &, char)> validator
+  )
+      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, m_validator{validator}, m_required{required} {
     if (!longOpt && !shortOpt) {
       throw CLIException{
           "CL_Argument expects either a longOpt for flags of the form --flag or a shortOpt for flags of the "
@@ -100,6 +109,7 @@ class CL_Argument {
   }
 
  private:
+  std::function<void(const ValueType &, const std::string &, char)> m_validator;
   bool m_required;
 };
 
@@ -110,9 +120,10 @@ class OptionalArgument : public CL_Argument<ValueType> {
       const char *longOpt = nullptr,
       char shortOpt = '\0',
       const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{}
+      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
   )
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, false) {
+      : CL_Argument<ValueType>(longOpt, shortOpt, d, false, validator) {
     this->value = defaultVal;
   }
 };
@@ -126,8 +137,13 @@ class RequiredArgument : public CL_Argument<ValueType> {
   );
 
  public:
-  RequiredArgument(const char *longOpt = nullptr, char shortOpt = '\0', const std::string &d = std::string{})
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, true) {}
+  RequiredArgument(
+      const char *longOpt = nullptr,
+      char shortOpt = '\0',
+      const std::string &d = std::string{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
+  )
+      : CL_Argument<ValueType>(longOpt, shortOpt, d, true, validator) {}
 };
 
 template <typename ArgNames, ArgNames Name, typename ValueType>
@@ -137,9 +153,10 @@ class NamedOptionalArgument : public OptionalArgument<ValueType> {
       const char *longOpt = nullptr,
       char shortOpt = '\0',
       const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{}
+      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
   )
-      : OptionalArgument<ValueType>(longOpt, shortOpt, d, defaultVal) {}
+      : OptionalArgument<ValueType>(longOpt, shortOpt, d, defaultVal, validator) {}
 };
 
 template <typename ArgNames, ArgNames Name, typename ValueType>
@@ -151,8 +168,13 @@ class NamedRequiredArgument : public RequiredArgument<ValueType> {
   );
 
  public:
-  NamedRequiredArgument(const char *longOpt = nullptr, char shortOpt = '\0', const std::string &d = std::string{})
-      : RequiredArgument<ValueType>(longOpt, shortOpt, d) {}
+  NamedRequiredArgument(
+      const char *longOpt = nullptr,
+      char shortOpt = '\0',
+      const std::string &d = std::string{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
+  )
+      : RequiredArgument<ValueType>(longOpt, shortOpt, d, validator) {}
 };
 
 template <typename ValueType>
@@ -175,6 +197,8 @@ void parseArgFromCL(int argc, const char **argv, CL_Argument<ValueType> &arg) {
           message, err.what(), longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0'
       );
     }
+
+    arg.validate(longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
 
   } else if (arg.isRequired()) {
     if (arg.hasLong() && arg.hasShort()) {
