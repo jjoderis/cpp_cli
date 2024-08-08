@@ -184,7 +184,7 @@ void parseArgFromCL(int argc, const char **argv, CL_Argument<ValueType> &arg) {
   int longIndex = std::get<1>(indices);
 
   if (flagIndex < argc) {
-    if (flagIndex + 1 >= argc || std::string{argv[flagIndex + 1]}.substr(0, 1).compare("-") == 0) {
+    if (flagIndex + 1 >= argc || std::string{argv[flagIndex + 1]}.substr(0, 2).compare("--") == 0) {
       std::string message{"Flag %s is not followed by a value!"};
       throw FlagException(message, "", longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
     }

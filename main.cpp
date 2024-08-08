@@ -18,15 +18,15 @@ int main(int argc, const char **argv) {
     auto res = cpp_cli::parseProgramArgumentsFromCL(
         argc,
         argv,
-        cpp_cli::NamedOptionalArgument<ArgNames, Height, int>{"height"},
-        cpp_cli::NamedOptionalArgument<ArgNames, Width, int>{"width"},
+        cpp_cli::NamedOptionalArgument<ArgNames, Height, unsigned int>{"height"},
+        cpp_cli::NamedOptionalArgument<ArgNames, Width, unsigned int>{"width"},
         cpp_cli::NamedOptionalArgument<ArgNames, Float, float>{"float"},
         cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>{"name", 'n'},
         cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'}
     );
 
     auto args = std::get<0>(res);
-    std::cout << args.getValue<ArgNames, Float>() << '\n';
+    std::cout << args.getValue<ArgNames, Height>() << '\n';
   } catch (cpp_cli::CLIException &err) {
     std::cout << err.what() << '\n';
     exit(EXIT_FAILURE);

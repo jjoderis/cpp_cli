@@ -1,6 +1,7 @@
 #include "CLArgument.h"
 
 #include <iostream>
+#include <limits>
 
 #include "../util/CLIException.h"
 
@@ -23,6 +24,32 @@ std::shared_ptr<int> parse<int>(const char *val) {
     msg.append(val).append(") does not fit into an argument of type int.");
     throw CLIException(msg);
   }
+}
+template <>
+std::shared_ptr<unsigned int> parse<unsigned int>(const char *val) {
+  std::string toParse{val};
+  std::size_t end;
+  unsigned long parsed;
+  try {
+    parsed = std::stoul(toParse, &end);
+    if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
+  } catch (std::invalid_argument const &err) {
+    std::string msg{"Invalid argument ("};
+    msg.append(val).append(") for an argument of type unsigned int.");
+    throw CLIException(msg);
+  } catch (std::out_of_range const &err) {
+    std::string msg{"Value ("};
+    msg.append(val).append(") does not fit into an argument of type unsigned int.");
+    throw CLIException(msg);
+  }
+
+  if (toParse.find('-') != std::string::npos)
+    throw std::invalid_argument("Negative number not allowed as value of an unsigned int.");
+
+  if (parsed > std::numeric_limits<unsigned int>::max())
+    throw std::range_error("The given value exceeds the limits of an unsigned int!");
+
+  return std::make_shared<unsigned int>(parsed);
 }
 template <>
 std::shared_ptr<float> parse<float>(const char *val) {
