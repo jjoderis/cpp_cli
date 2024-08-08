@@ -1,6 +1,7 @@
 #ifndef CL_ARGUMENT_H
 #define CL_ARGUMENT_H
 
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -40,6 +41,8 @@ class CL_Argument {
 
   bool isRequired() const { return m_required; }
 
+  bool hasValidator() const { return m_validator != nullptr; }
+
   std::string getManualString(int margin = 2) const {
     std::string marg{};
     marg.append(margin, ' ');
@@ -67,9 +70,8 @@ class CL_Argument {
     }
 
     if (longFlagIndex < argc && shortFlagIndex < argc) {
-      std::string errMessage = std::string{"Provided values for both the short ("} + shortOpt + ") and long (" +
-                               longOpt + ") version of a program parameter!";
-      throw CLIException{errMessage};
+      std::string errMessage{"Provided values for both the short (%s) and long (%s) version of a program parameter!"};
+      throw FlagException(errMessage, "", longOpt, shortOpt);
     }
 
     return std::tuple<int, int, int>{
@@ -77,9 +79,19 @@ class CL_Argument {
     };
   }
 
+  void validate(const std::string &parsedLongFlag, char parsedShortFlag) {
+    if (hasValidator()) m_validator(*value.get(), parsedLongFlag, parsedShortFlag);
+  }
+
  protected:
-  CL_Argument(const char *longOpt, char shortOpt, const std::string &d, bool required)
-      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, m_required{required} {
+  CL_Argument(
+      const char *longOpt,
+      char shortOpt,
+      const std::string &d,
+      bool required,
+      std::function<void(const ValueType &, const std::string &, char)> validator
+  )
+      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, m_validator{validator}, m_required{required} {
     if (!longOpt && !shortOpt) {
       throw CLIException{
           "CL_Argument expects either a longOpt for flags of the form --flag or a shortOpt for flags of the "
@@ -91,12 +103,13 @@ class CL_Argument {
     if (longOpt != nullptr && longOpt[0] == '-') {
       throw CLIException{
           "Please omit the - sign at the start of the given longOpt. If you want to handle the flag --arg just "
-          "provide the longOpt arg!"
+          "provide the longOpt \"arg\"!"
       };
     }
   }
 
  private:
+  std::function<void(const ValueType &, const std::string &, char)> m_validator;
   bool m_required;
 };
 
@@ -107,9 +120,10 @@ class OptionalArgument : public CL_Argument<ValueType> {
       const char *longOpt = nullptr,
       char shortOpt = '\0',
       const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{}
+      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
   )
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, false) {
+      : CL_Argument<ValueType>(longOpt, shortOpt, d, false, validator) {
     this->value = defaultVal;
   }
 };
@@ -123,8 +137,13 @@ class RequiredArgument : public CL_Argument<ValueType> {
   );
 
  public:
-  RequiredArgument(const char *longOpt = nullptr, char shortOpt = '\0', const std::string &d = std::string{})
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, true) {}
+  RequiredArgument(
+      const char *longOpt = nullptr,
+      char shortOpt = '\0',
+      const std::string &d = std::string{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
+  )
+      : CL_Argument<ValueType>(longOpt, shortOpt, d, true, validator) {}
 };
 
 template <typename ArgNames, ArgNames Name, typename ValueType>
@@ -134,9 +153,10 @@ class NamedOptionalArgument : public OptionalArgument<ValueType> {
       const char *longOpt = nullptr,
       char shortOpt = '\0',
       const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{}
+      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
   )
-      : OptionalArgument<ValueType>(longOpt, shortOpt, d, defaultVal) {}
+      : OptionalArgument<ValueType>(longOpt, shortOpt, d, defaultVal, validator) {}
 };
 
 template <typename ArgNames, ArgNames Name, typename ValueType>
@@ -148,8 +168,13 @@ class NamedRequiredArgument : public RequiredArgument<ValueType> {
   );
 
  public:
-  NamedRequiredArgument(const char *longOpt = nullptr, char shortOpt = '\0', const std::string &d = std::string{})
-      : RequiredArgument<ValueType>(longOpt, shortOpt, d) {}
+  NamedRequiredArgument(
+      const char *longOpt = nullptr,
+      char shortOpt = '\0',
+      const std::string &d = std::string{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
+  )
+      : RequiredArgument<ValueType>(longOpt, shortOpt, d, validator) {}
 };
 
 template <typename ValueType>
@@ -160,22 +185,32 @@ void parseArgFromCL(int argc, const char **argv, CL_Argument<ValueType> &arg) {
 
   if (flagIndex < argc) {
     if (flagIndex + 1 >= argc || std::string{argv[flagIndex + 1]}.substr(0, 1).compare("-") == 0) {
-      std::string errMessage =
-          std::string{"Flag "} +
-          (longIndex < argc ? std::string{"--"}.append(arg.longOpt) : std::string{"-"}.append(1, arg.shortOpt)) +
-          " is not followed by a value!";
-
-      throw CLIException{errMessage};
+      std::string message{"Flag %s is not followed by a value!"};
+      throw FlagException(message, "", longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
     }
 
-    arg.value = parse<ValueType>(argv[flagIndex + 1]);
+    try {
+      arg.value = parse<ValueType>(argv[flagIndex + 1]);
+    } catch (std::exception const &err) {
+      std::string message{"Ran into an error when parsing the value for flag %s. "};
+      throw FlagException(
+          message, err.what(), longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0'
+      );
+    }
+
+    arg.validate(longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
+
   } else if (arg.isRequired()) {
-    std::string errMessage{"Missing a required function argument ("};
-    if (arg.hasShort()) errMessage += std::string{"-"}.append(1, arg.shortOpt);
-    if (arg.hasShort() && arg.hasLong()) errMessage += ", ";
-    if (arg.hasLong()) errMessage += std::string{"--"}.append(arg.longOpt);
-    errMessage += ")!";
-    throw CLIException{errMessage};
+    if (arg.hasLong() && arg.hasShort()) {
+      std::string errMessage{"Missing a required function argument (%s, %s)!"};
+      throw FlagException(errMessage, "", arg.longOpt, arg.shortOpt);
+    } else if (arg.hasLong()) {
+      std::string errMessage{"Missing a required function argument (%s)!"};
+      throw FlagException(errMessage, "", arg.longOpt);
+    } else {
+      std::string errMessage{"Missing a required function argument (%s)!"};
+      throw FlagException(errMessage, "", "", arg.shortOpt);
+    }
   }
 }
 

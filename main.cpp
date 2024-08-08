@@ -7,6 +7,7 @@
 enum ArgNames {
   Width,
   Height,
+  Float,
   Name,
 };
 
@@ -14,14 +15,20 @@ enum OtherArgNames { Active };
 
 int main(int argc, const char **argv) {
   try {
-    cpp_cli::ProgramArguments<
-        cpp_cli::NamedOptionalArgument<ArgNames, Height, int>,
-        cpp_cli::NamedOptionalArgument<ArgNames, Width, int>,
-        cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>,
-        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>>
-        args{{"height"}, {"width"}, {"name", 'n'}, {nullptr, 'a'}};
+    auto res = cpp_cli::parseProgramArgumentsFromCL(
+        argc,
+        argv,
+        cpp_cli::NamedOptionalArgument<ArgNames, Height, int>{"height"},
+        cpp_cli::NamedOptionalArgument<ArgNames, Width, int>{"width"},
+        cpp_cli::NamedOptionalArgument<ArgNames, Float, float>{"float"},
+        cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>{"name", 'n'},
+        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'}
+    );
+
+    auto args = std::get<0>(res);
+    std::cout << args.getValue<ArgNames, Float>() << '\n';
   } catch (cpp_cli::CLIException &err) {
-    std::cout << err.getMessage() << '\n';
+    std::cout << err.what() << '\n';
     exit(EXIT_FAILURE);
   }
 
