@@ -10,7 +10,7 @@
 
 namespace cpp_cli {
 template <typename T>
-std::shared_ptr<T> parse(const char *);
+std::shared_ptr<T> parse(const std::string &toParse);
 // {
 //   static_assert(
 //       false,

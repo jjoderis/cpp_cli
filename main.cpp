@@ -1,15 +1,11 @@
 #include <CLArgument/CLArgument.h>
 #include <ProgramArguments.h>
 
+#include <filesystem>
 #include <iostream>
 #include <optional>
 
-enum ArgNames {
-  Width,
-  Height,
-  Float,
-  Name,
-};
+enum ArgNames { Width, Height, Float, Name, Output };
 
 enum OtherArgNames { Active };
 
@@ -22,11 +18,14 @@ int main(int argc, const char **argv) {
         cpp_cli::NamedOptionalArgument<ArgNames, Width, unsigned int>{"width"},
         cpp_cli::NamedOptionalArgument<ArgNames, Float, float>{"float"},
         cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>{"name", 'n'},
-        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'}
+        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'},
+        cpp_cli::NamedOptionalArgument<ArgNames, Output, std::filesystem::path>{"output", 'o'}
     );
 
     auto args = std::get<0>(res);
-    std::cout << args.getValue<ArgNames, Height>() << '\n';
+    if (args.hasValue<ArgNames, Output>()) {
+      std::cout << args.getValue<ArgNames, Output>() << '\n';
+    }
   } catch (cpp_cli::CLIException &err) {
     std::cout << err.what() << '\n';
     exit(EXIT_FAILURE);
