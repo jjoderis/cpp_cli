@@ -13,9 +13,7 @@ namespace cpp_cli {
 template <typename T>
 struct is_named_arg : std::false_type {};
 template <typename ArgNames, ArgNames ArgName, typename T>
-struct is_named_arg<NamedRequiredArgument<ArgNames, ArgName, T>> : std::true_type {};
-template <typename ArgNames, ArgNames ArgName, typename T>
-struct is_named_arg<NamedOptionalArgument<ArgNames, ArgName, T>> : std::true_type {};
+struct is_named_arg<NamedArgument<ArgNames, ArgName, T>> : std::true_type {};
 
 // check if all elements in a parameter pack are named args
 template <typename... Args>
@@ -31,13 +29,7 @@ struct is_named_arg_pack<T, Rest...>
 template <typename T>
 struct named_arg_info;
 template <typename ArgNames, ArgNames Name, typename T>
-struct named_arg_info<NamedRequiredArgument<ArgNames, Name, T>> {
-  using arg_name_type = ArgNames;
-  static const ArgNames arg_name{Name};
-  using arg_value_type = T;
-};
-template <typename ArgNames, ArgNames Name, typename T>
-struct named_arg_info<NamedOptionalArgument<ArgNames, Name, T>> {
+struct named_arg_info<NamedArgument<ArgNames, Name, T>> {
   using arg_name_type = ArgNames;
   static const ArgNames arg_name{Name};
   using arg_value_type = T;
@@ -50,10 +42,7 @@ template <int index, typename ArgNames, ArgNames Name, typename T, typename... A
 struct arg_index_by_name_impl<index, ArgNames, Name, T, Args...>
     : arg_index_by_name_impl<index + 1, ArgNames, Name, Args...> {};
 template <int index, typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_index_by_name_impl<index, ArgNames, Name, NamedRequiredArgument<ArgNames, Name, T>, Args...>
-    : std::integral_constant<int, index> {};
-template <int index, typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_index_by_name_impl<index, ArgNames, Name, NamedOptionalArgument<ArgNames, Name, T>, Args...>
+struct arg_index_by_name_impl<index, ArgNames, Name, NamedArgument<ArgNames, Name, T>, Args...>
     : std::integral_constant<int, index> {};
 
 template <typename ArgNames, ArgNames Name, typename... Args>
@@ -65,12 +54,8 @@ struct arg_by_name_impl {};
 template <typename ArgNames, ArgNames Name, typename T, typename... Args>
 struct arg_by_name_impl<ArgNames, Name, T, Args...> : arg_by_name_impl<ArgNames, Name, Args...> {};
 template <typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_by_name_impl<ArgNames, Name, NamedRequiredArgument<ArgNames, Name, T>, Args...> {
-  using type = NamedRequiredArgument<ArgNames, Name, T>;
-};
-template <typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_by_name_impl<ArgNames, Name, NamedOptionalArgument<ArgNames, Name, T>, Args...> {
-  using type = NamedOptionalArgument<ArgNames, Name, T>;
+struct arg_by_name_impl<ArgNames, Name, NamedArgument<ArgNames, Name, T>, Args...> {
+  using type = NamedArgument<ArgNames, Name, T>;
 };
 
 template <typename ArgNames, ArgNames Name, typename... Args>

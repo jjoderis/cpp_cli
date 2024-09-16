@@ -21,9 +21,7 @@ enum OtherType2 {
 };  // namespace s2
 
 template <typename ArgNames, ArgNames Name, typename ValueType>
-using nOpt = cpp_cli::NamedOptionalArgument<ArgNames, Name, ValueType>;
-template <typename ArgNames, ArgNames Name, typename ValueType>
-using nReq = cpp_cli::NamedRequiredArgument<ArgNames, Name, ValueType>;
+using nArg = cpp_cli::NamedArgument<ArgNames, Name, ValueType>;
 
 TEST(ProgramArguments_TEST, type_trait_test) {
   // check if a type is a pair containing an enum and an Argument
@@ -33,10 +31,10 @@ TEST(ProgramArguments_TEST, type_trait_test) {
   bool ab = cpp_cli::is_named_arg<cpp_cli::OptionalArgument<int>>::value;
   EXPECT_FALSE(ab);
 
-  bool ac = cpp_cli::is_named_arg<nOpt<TestType, Arg1, int>>::value;
+  bool ac = cpp_cli::is_named_arg<nArg<TestType, Arg1, int>>::value;
   EXPECT_TRUE(ac);
 
-  bool ad = cpp_cli::is_named_arg<nReq<TestType, Arg1, int>>::value;
+  bool ad = cpp_cli::is_named_arg<nArg<TestType, Arg1, int>>::value;
   EXPECT_TRUE(ad);
 
   // check if a parameter pack contains only named arguments
@@ -49,116 +47,112 @@ TEST(ProgramArguments_TEST, type_trait_test) {
   bool bc = cpp_cli::is_named_arg_pack<cpp_cli::OptionalArgument<int>>::value;
   EXPECT_FALSE(bc);
 
-  bool bd = cpp_cli::is_named_arg_pack<nOpt<TestType, Arg1, int>>::value;
+  bool bd = cpp_cli::is_named_arg_pack<nArg<TestType, Arg1, int>>::value;
   EXPECT_TRUE(bd);
 
-  bool be = cpp_cli::is_named_arg_pack<nOpt<TestType, Arg1, int>, nReq<s1::OtherType, s1::X, float>>::value;
+  bool be = cpp_cli::is_named_arg_pack<nArg<TestType, Arg1, int>, nArg<s1::OtherType, s1::X, float>>::value;
   EXPECT_TRUE(be);
 
-  bool bf = cpp_cli::is_named_arg_pack<nOpt<TestType, Arg1, int>, int>::value;
+  bool bf = cpp_cli::is_named_arg_pack<nArg<TestType, Arg1, int>, int>::value;
   EXPECT_FALSE(bf);
 
-  bool bg = cpp_cli::is_named_arg_pack<int, nReq<TestType, Arg1, int>>::value;
+  bool bg = cpp_cli::is_named_arg_pack<int, nArg<TestType, Arg1, int>>::value;
   EXPECT_FALSE(bg);
 
-  bool bh = cpp_cli::is_named_arg_pack<nOpt<TestType, Arg1, int>, int, nOpt<TestType, Arg1, float>>::value;
+  bool bh = cpp_cli::is_named_arg_pack<nArg<TestType, Arg1, int>, int, nArg<TestType, Arg1, float>>::value;
   EXPECT_FALSE(bh);
 
   // extract information about a named arg from its template
-  TestType ca = cpp_cli::named_arg_info<nOpt<TestType, Arg1, int>>::arg_name;
+  TestType ca = cpp_cli::named_arg_info<nArg<TestType, Arg1, int>>::arg_name;
   EXPECT_EQ(ca, Arg1);
 
-  TestType cb = cpp_cli::named_arg_info<nReq<TestType, Arg2, int>>::arg_name;
+  TestType cb = cpp_cli::named_arg_info<nArg<TestType, Arg2, int>>::arg_name;
   EXPECT_NE(cb, Arg1);
   EXPECT_EQ(cb, Arg2);
 
-  bool cc = std::is_same<cpp_cli::named_arg_info<nOpt<s1::OtherType, s1::X, int>>::arg_name_type, s1::OtherType>::value;
+  bool cc = std::is_same<cpp_cli::named_arg_info<nArg<s1::OtherType, s1::X, int>>::arg_name_type, s1::OtherType>::value;
   EXPECT_TRUE(cc);
 
   bool cd = std::
-      is_same<cpp_cli::named_arg_info<nOpt<s1::OtherType, s1::X, std::string>>::arg_value_type, std::string>::value;
+      is_same<cpp_cli::named_arg_info<nArg<s1::OtherType, s1::X, std::string>>::arg_value_type, std::string>::value;
   EXPECT_TRUE(cd);
 
   // find first index of an element with specific name
-  int da = cpp_cli::arg_index_by_name<TestType, Arg1, nOpt<TestType, Arg2, int>>::value;
+  int da = cpp_cli::arg_index_by_name<TestType, Arg1, nArg<TestType, Arg2, int>>::value;
   EXPECT_EQ(-1, da);
 
-  int db = cpp_cli::arg_index_by_name<TestType, Arg1, nOpt<TestType, Arg1, int>>::value;
+  int db = cpp_cli::arg_index_by_name<TestType, Arg1, nArg<TestType, Arg1, int>>::value;
   EXPECT_EQ(0, db);
 
-  int dc = cpp_cli::arg_index_by_name<TestType, Arg1, nOpt<TestType, Arg1, int>, nOpt<TestType, Arg1, float>>::value;
+  int dc = cpp_cli::arg_index_by_name<TestType, Arg1, nArg<TestType, Arg1, int>, nArg<TestType, Arg1, float>>::value;
   EXPECT_EQ(0, dc);
 
-  int dd = cpp_cli::arg_index_by_name<TestType, Arg1, nOpt<TestType, Arg2, int>, nOpt<TestType, Arg1, float>>::value;
+  int dd = cpp_cli::arg_index_by_name<TestType, Arg1, nArg<TestType, Arg2, int>, nArg<TestType, Arg1, float>>::value;
   EXPECT_EQ(1, dd);
 
   int de = cpp_cli::arg_index_by_name<
       TestType,
       Arg1,
-      nOpt<TestType, Arg2, int>,
-      nOpt<TestType, Arg1, float>,
-      nOpt<TestType, Arg3, int>>::value;
+      nArg<TestType, Arg2, int>,
+      nArg<TestType, Arg1, float>,
+      nArg<TestType, Arg3, int>>::value;
   EXPECT_EQ(1, de);
 
   // find an arg in a pack by indexing it with the args name
   bool ea = std::
-      is_same<cpp_cli::arg_by_name<TestType, Arg1, nOpt<TestType, Arg1, int>>::type, nOpt<TestType, Arg1, int>>::value;
+      is_same<cpp_cli::arg_by_name<TestType, Arg1, nArg<TestType, Arg1, int>>::type, nArg<TestType, Arg1, int>>::value;
   EXPECT_TRUE(ea);
 
-  bool eb = std::
-      is_same<cpp_cli::arg_by_name<TestType, Arg1, nOpt<TestType, Arg1, int>>::type, nReq<TestType, Arg1, int>>::value;
-  EXPECT_FALSE(eb);
-
   bool ec = std::is_same<
-      cpp_cli::arg_by_name<TestType, Arg1, nOpt<TestType, Arg1, int>, nOpt<TestType, Arg1, float>>::type,
-      nOpt<TestType, Arg1, int>>::value;
+      cpp_cli::arg_by_name<TestType, Arg1, nArg<TestType, Arg1, int>, nArg<TestType, Arg1, float>>::type,
+      nArg<TestType, Arg1, int>>::value;
   EXPECT_TRUE(ec);
 
   bool ed = std::is_same<
-      cpp_cli::arg_by_name<TestType, Arg1, nOpt<TestType, Arg2, int>, nOpt<TestType, Arg1, float>>::type,
-      nOpt<TestType, Arg1, float>>::value;
+      cpp_cli::arg_by_name<TestType, Arg1, nArg<TestType, Arg2, int>, nArg<TestType, Arg1, float>>::type,
+      nArg<TestType, Arg1, float>>::value;
   EXPECT_TRUE(ed);
 
   bool ee = std::is_same<
       cpp_cli::arg_by_name<
           TestType,
           Arg1,
-          nOpt<TestType, Arg2, int>,
-          nOpt<TestType, Arg1, float>,
-          nOpt<TestType, Arg3, int>>::type,
-      nOpt<TestType, Arg1, float>>::value;
+          nArg<TestType, Arg2, int>,
+          nArg<TestType, Arg1, float>,
+          nArg<TestType, Arg3, int>>::type,
+      nArg<TestType, Arg1, float>>::value;
   EXPECT_TRUE(ee);
 
   // check if the pack only contains names args using different names
-  bool fa = cpp_cli::args_have_unique_names<nOpt<TestType, Arg2, int>>::value;
+  bool fa = cpp_cli::args_have_unique_names<nArg<TestType, Arg2, int>>::value;
   EXPECT_TRUE(fa);
 
-  bool fb = cpp_cli::args_have_unique_names<nOpt<TestType, Arg2, int>, nOpt<TestType, Arg1, int>>::value;
+  bool fb = cpp_cli::args_have_unique_names<nArg<TestType, Arg2, int>, nArg<TestType, Arg1, int>>::value;
   EXPECT_TRUE(fb);
 
-  bool fc = cpp_cli::args_have_unique_names<nOpt<TestType, Arg2, int>, nReq<TestType, Arg2, int>>::value;
+  bool fc = cpp_cli::args_have_unique_names<nArg<TestType, Arg2, int>, nArg<TestType, Arg2, int>>::value;
   EXPECT_FALSE(fc);
 
-  bool fd = cpp_cli::args_have_unique_names<nOpt<s1::OtherType, s1::X, int>, nOpt<s2::OtherType2, s2::X, int>>::value;
+  bool fd = cpp_cli::args_have_unique_names<nArg<s1::OtherType, s1::X, int>, nArg<s2::OtherType2, s2::X, int>>::value;
   EXPECT_TRUE(fd);
 
-  bool fe = cpp_cli::args_have_unique_names<nOpt<TestType, Arg1, float>, nReq<TestType, Arg1, int>>::value;
+  bool fe = cpp_cli::args_have_unique_names<nArg<TestType, Arg1, float>, nArg<TestType, Arg1, int>>::value;
   EXPECT_FALSE(fe);
 
   bool ff = cpp_cli::args_have_unique_names<
-      nOpt<TestType, Arg1, float>,
-      nReq<TestType, Arg2, int>,
-      nOpt<TestType, Arg1, float>>::value;
+      nArg<TestType, Arg1, float>,
+      nArg<TestType, Arg2, int>,
+      nArg<TestType, Arg1, float>>::value;
   EXPECT_FALSE(ff);
 }
 
 TEST(ProgramArguments_TEST, class_test) {
   // create a container for named args that takes args of generic types and allows access by to an arg by its name
   cpp_cli::ProgramArguments<
-      nOpt<TestType, Arg3, int>,
-      nOpt<TestType, Arg1, int>,
-      nReq<s1::OtherType, s1::X, std::string>,
-      nOpt<s2::OtherType2, s2::X, bool>>
+      nArg<TestType, Arg3, int>,
+      nArg<TestType, Arg1, int>,
+      nArg<s1::OtherType, s1::X, std::string>,
+      nArg<s2::OtherType2, s2::X, bool>>
       args{
           {"arg3"},
           {"arg2", '\0', "Second Argument", std::make_shared<int>(122)},
@@ -193,7 +187,7 @@ TEST(ProgramArguments_TEST, class_test) {
   bool acHasValue = args.hasValue<TestType, Arg3>();
   EXPECT_FALSE(acHasValue);
   EXPECT_FALSE(ac.hasValue());
-  EXPECT_FALSE(ac.isRequired());
+  EXPECT_TRUE(ac.isRequired());
 
   auto ad = args.getArg<s2::OtherType2, s2::X>();
   EXPECT_FALSE(ad.hasLong());
@@ -202,7 +196,7 @@ TEST(ProgramArguments_TEST, class_test) {
   bool adHasValue = args.hasValue<s2::OtherType2, s2::X>();
   EXPECT_FALSE(adHasValue);
   EXPECT_FALSE(ad.hasValue());
-  EXPECT_FALSE(ad.isRequired());
+  EXPECT_TRUE(ad.isRequired());
 }
 
 TEST(ProgramArguments_TEST, parsing_test) {
@@ -213,13 +207,13 @@ TEST(ProgramArguments_TEST, parsing_test) {
   auto parseRes = cpp_cli::parseProgramArgumentsFromCL(
       argc,
       cl,
-      nReq<TestType, Arg3, int>{nullptr, 'i'},
-      nOpt<TestType, Arg1, std::string>{"arg1"},
-      nOpt<s2::OtherType2, s2::X, bool>{"bool"},
-      nOpt<s1::OtherType, s1::X, float>{"float", '\0', "", std::make_shared<float>(42.5)},
-      nOpt<TestType, Arg5, float>{"unknown1"},
-      nOpt<TestType, Arg2, bool>{"unknown2"},
-      nOpt<TestType, Arg4, float>{nullptr, 'u', "", std::make_shared<float>(23.8)}
+      nArg<TestType, Arg3, int>{nullptr, 'i'},
+      nArg<TestType, Arg1, std::string>{"arg1"},
+      nArg<s2::OtherType2, s2::X, bool>{"bool"},
+      nArg<s1::OtherType, s1::X, float>{"float", '\0', "", std::make_shared<float>(42.5)},
+      nArg<TestType, Arg5, float>{"unknown1", '\0', "", std::make_shared<float>(2)},
+      nArg<TestType, Arg2, bool>{"unknown2"},
+      nArg<TestType, Arg4, float>{nullptr, 'u', "", std::make_shared<float>(23.8)}
   );
 
   auto parsedArgs = std::get<0>(parseRes);
@@ -269,10 +263,10 @@ TEST(ProgramArguments_TEST, parsing_test) {
   auto parse2Res = cpp_cli::parseProgramArgumentsFromCL(
       argc,
       cl,
-      nReq<TestType, Arg3, int>{nullptr, 'i'},
-      nOpt<TestType, Arg1, std::string>{"arg1"},
-      nOpt<s2::OtherType2, s2::X, bool>{"bool"},
-      nOpt<TestType, Arg2, bool>{"unknown"}
+      nArg<TestType, Arg3, int>{nullptr, 'i'},
+      nArg<TestType, Arg1, std::string>{"arg1"},
+      nArg<s2::OtherType2, s2::X, bool>{"bool"},
+      nArg<TestType, Arg2, bool>{"unknown"}
   );
 
   int unknownFlagIndex2 = std::get<1>(parse2Res);
@@ -316,10 +310,10 @@ TEST(ProgramArguments_TEST, parsing_test) {
     cpp_cli::parseProgramArgumentsFromCL(
         argc,
         argv,
-        nReq<TestType, Arg3, int>{nullptr, 'i'},
-        nOpt<TestType, Arg1, std::string>{"arg1"},
-        nOpt<s2::OtherType2, s2::X, bool>{"bool"},
-        nReq<TestType, Arg2, float>{"unknown"}
+        nArg<TestType, Arg3, int>{nullptr, 'i'},
+        nArg<TestType, Arg1, std::string>{"arg1"},
+        nArg<s2::OtherType2, s2::X, bool>{"bool"},
+        nArg<TestType, Arg2, float>{"unknown"}
     );
   };
 

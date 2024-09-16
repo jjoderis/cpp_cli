@@ -39,7 +39,7 @@ class CL_Argument {
 
   bool hasDescription() const { return !description.empty(); }
 
-  bool isRequired() const { return m_required; }
+  bool isRequired() const { return !std::is_same<bool, ValueType>::value && !hasValue(); }
 
   bool hasValidator() const { return m_validator != nullptr; }
 
@@ -111,6 +111,21 @@ class CL_Argument {
  private:
   std::function<void(const ValueType &, const std::string &, char)> m_validator;
   bool m_required;
+};
+
+template <typename ArgNames, ArgNames Name, typename ValueType>
+class NamedArgument : public CL_Argument<ValueType> {
+ public:
+  NamedArgument(
+      const char *longOpt = nullptr,
+      char shortOpt = '\0',
+      const std::string &d = std::string{},
+      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
+  )
+      : CL_Argument<ValueType>(longOpt, shortOpt, d, false, validator) {
+    this->value = defaultVal;
+  }
 };
 
 template <typename ValueType>
