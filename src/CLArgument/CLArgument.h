@@ -29,8 +29,6 @@ class CL_Argument {
   std::string description;
   std::shared_ptr<ValueType> value{};
 
-  CL_Argument() = delete;
-
   bool hasLong() const { return longOpt != nullptr; }
 
   bool hasShort() const { return shortOpt != '\0'; }
@@ -83,15 +81,14 @@ class CL_Argument {
     if (hasValidator()) m_validator(*value.get(), parsedLongFlag, parsedShortFlag);
   }
 
- protected:
   CL_Argument(
-      const char *longOpt,
-      char shortOpt,
-      const std::string &d,
-      bool required,
-      std::function<void(const ValueType &, const std::string &, char)> validator
+      const char *longOpt = nullptr,
+      char shortOpt = 0,
+      const std::string &d = "",
+      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
+      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
   )
-      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, m_validator{validator}, m_required{required} {
+      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, value{defaultVal}, m_validator{validator} {
     if (!longOpt && !shortOpt) {
       throw CLIException{
           "CL_Argument expects either a longOpt for flags of the form --flag or a shortOpt for flags of the "
@@ -110,7 +107,6 @@ class CL_Argument {
 
  private:
   std::function<void(const ValueType &, const std::string &, char)> m_validator;
-  bool m_required;
 };
 
 template <typename ArgNames, ArgNames Name, typename ValueType>
@@ -123,73 +119,9 @@ class NamedArgument : public CL_Argument<ValueType> {
       std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
       std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
   )
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, false, validator) {
+      : CL_Argument<ValueType>(longOpt, shortOpt, d, defaultVal, validator) {
     this->value = defaultVal;
   }
-};
-
-template <typename ValueType>
-class OptionalArgument : public CL_Argument<ValueType> {
- public:
-  OptionalArgument(
-      const char *longOpt = nullptr,
-      char shortOpt = '\0',
-      const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
-      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
-  )
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, false, validator) {
-    this->value = defaultVal;
-  }
-};
-
-template <typename ValueType>
-class RequiredArgument : public CL_Argument<ValueType> {
-  static_assert(
-      std::integral_constant<bool, !std::is_same<ValueType, bool>::value>::value,
-      "An argument of a boolean type cannot be required. If it does not exist the value is assumed "
-      "to be false!"
-  );
-
- public:
-  RequiredArgument(
-      const char *longOpt = nullptr,
-      char shortOpt = '\0',
-      const std::string &d = std::string{},
-      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
-  )
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, true, validator) {}
-};
-
-template <typename ArgNames, ArgNames Name, typename ValueType>
-class NamedOptionalArgument : public OptionalArgument<ValueType> {
- public:
-  NamedOptionalArgument(
-      const char *longOpt = nullptr,
-      char shortOpt = '\0',
-      const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
-      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
-  )
-      : OptionalArgument<ValueType>(longOpt, shortOpt, d, defaultVal, validator) {}
-};
-
-template <typename ArgNames, ArgNames Name, typename ValueType>
-class NamedRequiredArgument : public RequiredArgument<ValueType> {
-  static_assert(
-      std::integral_constant<bool, !std::is_same<ValueType, bool>::value>::value,
-      "An argument of a boolean type cannot be required. If it does not exist the value is assumed "
-      "to be false!"
-  );
-
- public:
-  NamedRequiredArgument(
-      const char *longOpt = nullptr,
-      char shortOpt = '\0',
-      const std::string &d = std::string{},
-      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
-  )
-      : RequiredArgument<ValueType>(longOpt, shortOpt, d, validator) {}
 };
 
 template <typename ValueType>

@@ -28,7 +28,7 @@ TEST(ProgramArguments_TEST, type_trait_test) {
   bool aa = cpp_cli::is_named_arg<int>::value;
   EXPECT_FALSE(aa);
 
-  bool ab = cpp_cli::is_named_arg<cpp_cli::OptionalArgument<int>>::value;
+  bool ab = cpp_cli::is_named_arg<cpp_cli::CL_Argument<int>>::value;
   EXPECT_FALSE(ab);
 
   bool ac = cpp_cli::is_named_arg<nArg<TestType, Arg1, int>>::value;
@@ -44,7 +44,7 @@ TEST(ProgramArguments_TEST, type_trait_test) {
   bool bb = cpp_cli::is_named_arg_pack<int>::value;
   EXPECT_FALSE(bb);
 
-  bool bc = cpp_cli::is_named_arg_pack<cpp_cli::OptionalArgument<int>>::value;
+  bool bc = cpp_cli::is_named_arg_pack<cpp_cli::CL_Argument<int>>::value;
   EXPECT_FALSE(bc);
 
   bool bd = cpp_cli::is_named_arg_pack<nArg<TestType, Arg1, int>>::value;
@@ -147,7 +147,7 @@ TEST(ProgramArguments_TEST, type_trait_test) {
 }
 
 TEST(ProgramArguments_TEST, class_test) {
-  // create a container for named args that takes args of generic types and allows access by to an arg by its name
+  // create a container for named args that takes args of generic types and allows access to an arg by its name
   cpp_cli::ProgramArguments<
       nArg<TestType, Arg3, int>,
       nArg<TestType, Arg1, int>,
@@ -160,43 +160,43 @@ TEST(ProgramArguments_TEST, class_test) {
           {nullptr, 'X', "Last Argument"}
       };
 
-  auto aa = args.getArg<TestType, Arg1>();
-  EXPECT_STREQ(aa.longOpt, "arg2");
-  EXPECT_FALSE(aa.hasShort());
-  EXPECT_STREQ(aa.description.c_str(), "Second Argument");
-  bool aaHasValue = args.hasValue<TestType, Arg1>();
-  EXPECT_TRUE(aaHasValue);
-  int aaValue = args.getValue<TestType, Arg1>();
-  EXPECT_EQ(*aa.value.get(), 122);
-  EXPECT_EQ(aaValue, 122);
-  EXPECT_FALSE(aa.isRequired());
+  auto arg1 = args.getArg<TestType, Arg1>();
+  EXPECT_STREQ(arg1.longOpt, "arg2");
+  EXPECT_FALSE(arg1.hasShort());
+  EXPECT_STREQ(arg1.description.c_str(), "Second Argument");
+  bool arg1HasValue = args.hasValue<TestType, Arg1>();
+  EXPECT_TRUE(arg1HasValue);
+  int arg1Value = args.getValue<TestType, Arg1>();
+  EXPECT_EQ(*arg1.value.get(), 122);
+  EXPECT_EQ(arg1Value, 122);
+  EXPECT_FALSE(arg1.isRequired());
 
-  auto ab = args.getArg<s1::OtherType, s1::X>();
-  EXPECT_FALSE(ab.hasLong());
-  EXPECT_EQ(ab.shortOpt, 'x');
-  EXPECT_FALSE(ab.hasDescription());
-  bool abHasValue = args.hasValue<s1::OtherType, s1::X>();
-  EXPECT_FALSE(abHasValue);
-  EXPECT_FALSE(ab.hasValue());
-  EXPECT_TRUE(ab.isRequired());
+  auto otherX = args.getArg<s1::OtherType, s1::X>();
+  EXPECT_FALSE(otherX.hasLong());
+  EXPECT_EQ(otherX.shortOpt, 'x');
+  EXPECT_FALSE(otherX.hasDescription());
+  bool otherXHasValue = args.hasValue<s1::OtherType, s1::X>();
+  EXPECT_FALSE(otherXHasValue);
+  EXPECT_FALSE(otherX.hasValue());
+  EXPECT_TRUE(otherX.isRequired());
 
-  auto ac = args.getArg<TestType, Arg3>();
-  EXPECT_STREQ(ac.longOpt, "arg3");
-  EXPECT_FALSE(ac.hasShort());
-  EXPECT_FALSE(ac.hasDescription());
-  bool acHasValue = args.hasValue<TestType, Arg3>();
-  EXPECT_FALSE(acHasValue);
-  EXPECT_FALSE(ac.hasValue());
-  EXPECT_TRUE(ac.isRequired());
+  auto arg3 = args.getArg<TestType, Arg3>();
+  EXPECT_STREQ(arg3.longOpt, "arg3");
+  EXPECT_FALSE(arg3.hasShort());
+  EXPECT_FALSE(arg3.hasDescription());
+  bool arg3HasValue = args.hasValue<TestType, Arg3>();
+  EXPECT_FALSE(arg3HasValue);
+  EXPECT_FALSE(arg3.hasValue());
+  EXPECT_TRUE(arg3.isRequired());
 
-  auto ad = args.getArg<s2::OtherType2, s2::X>();
-  EXPECT_FALSE(ad.hasLong());
-  EXPECT_EQ(ad.shortOpt, 'X');
-  EXPECT_STREQ(ad.description.c_str(), "Last Argument");
-  bool adHasValue = args.hasValue<s2::OtherType2, s2::X>();
-  EXPECT_FALSE(adHasValue);
-  EXPECT_FALSE(ad.hasValue());
-  EXPECT_TRUE(ad.isRequired());
+  auto other2X = args.getArg<s2::OtherType2, s2::X>();
+  EXPECT_FALSE(other2X.hasLong());
+  EXPECT_EQ(other2X.shortOpt, 'X');
+  EXPECT_STREQ(other2X.description.c_str(), "Last Argument");
+  bool other2XHasValue = args.hasValue<s2::OtherType2, s2::X>();
+  EXPECT_FALSE(other2XHasValue);
+  EXPECT_FALSE(other2X.hasValue());
+  EXPECT_FALSE(other2X.isRequired());
 }
 
 TEST(ProgramArguments_TEST, parsing_test) {
@@ -219,41 +219,37 @@ TEST(ProgramArguments_TEST, parsing_test) {
   auto parsedArgs = std::get<0>(parseRes);
 
   // check that the values were parsed correctly
-  bool aaHasValue = parsedArgs.hasValue<TestType, Arg3>();
-  EXPECT_TRUE(aaHasValue);
-  int aaValue = parsedArgs.getValue<TestType, Arg3>();
-  EXPECT_EQ(aaValue, 123);
+  bool arg3HasValue = parsedArgs.hasValue<TestType, Arg3>();
+  EXPECT_TRUE(arg3HasValue);
+  int arg3Value = parsedArgs.getValue<TestType, Arg3>();
+  EXPECT_EQ(arg3Value, 123);
 
-  bool abHasValue = parsedArgs.hasValue<TestType, Arg1>();
-  EXPECT_TRUE(abHasValue);
-  std::string abValue = parsedArgs.getValue<TestType, Arg1>();
-  EXPECT_STREQ(abValue.c_str(), "val1");
+  bool arg1HasValue = parsedArgs.hasValue<TestType, Arg1>();
+  EXPECT_TRUE(arg1HasValue);
+  std::string arg1Value = parsedArgs.getValue<TestType, Arg1>();
+  EXPECT_STREQ(arg1Value.c_str(), "val1");
 
-  bool acHasValue = parsedArgs.hasValue<s2::OtherType2, s2::X>();
-  EXPECT_TRUE(acHasValue);
-  bool acValue = parsedArgs.getValue<s2::OtherType2, s2::X>();
-  EXPECT_TRUE(acValue);
+  bool other2XHasValue = parsedArgs.hasValue<s2::OtherType2, s2::X>();
+  EXPECT_TRUE(other2XHasValue);
+  bool other2XValue = parsedArgs.getValue<s2::OtherType2, s2::X>();
+  EXPECT_TRUE(other2XValue);
 
-  bool adHasValue = parsedArgs.hasValue<s1::OtherType, s1::X>();
-  EXPECT_TRUE(adHasValue);
-  float adValue = parsedArgs.getValue<s1::OtherType, s1::X>();
-  EXPECT_FLOAT_EQ(adValue, 12.5);
-
-  // check that a non bool valued arg that is not found still has no value
-  bool aeHasValue = parsedArgs.hasValue<TestType, Arg5>();
-  EXPECT_FALSE(aeHasValue);
+  bool otherXHasValue = parsedArgs.hasValue<s1::OtherType, s1::X>();
+  EXPECT_TRUE(otherXHasValue);
+  float otherXValue = parsedArgs.getValue<s1::OtherType, s1::X>();
+  EXPECT_FLOAT_EQ(otherXValue, 12.5);
 
   // check that a bool valued arg that is not found in the program call is set to false
-  bool afHasValue = parsedArgs.hasValue<TestType, Arg2>();
-  EXPECT_TRUE(afHasValue);
-  bool afValue = parsedArgs.getValue<TestType, Arg2>();
-  EXPECT_FALSE(afValue);
+  bool arg2HasValue = parsedArgs.hasValue<TestType, Arg2>();
+  EXPECT_TRUE(arg2HasValue);
+  bool arg2Value = parsedArgs.getValue<TestType, Arg2>();
+  EXPECT_FALSE(arg2Value);
 
-  // check that a non bool typed optional value with a default value still has that default value
-  bool agHasValue = parsedArgs.hasValue<TestType, Arg4>();
-  EXPECT_TRUE(agHasValue);
-  float agValue = parsedArgs.getValue<TestType, Arg4>();
-  EXPECT_FLOAT_EQ(agValue, 23.8);
+  // check that a non bool typed value with a default value still has that default value
+  bool arg4HasValue = parsedArgs.hasValue<TestType, Arg4>();
+  EXPECT_TRUE(arg4HasValue);
+  float arg4Value = parsedArgs.getValue<TestType, Arg4>();
+  EXPECT_FLOAT_EQ(arg4Value, 23.8);
 
   // if all flags in the program call are known the second value returned by the parse function should be -1
   int unknownFlagIndex = std::get<1>(parseRes);
@@ -275,33 +271,25 @@ TEST(ProgramArguments_TEST, parsing_test) {
   auto parsedArgs2 = std::get<0>(parse2Res);
 
   // the rest should have been parsed as expected
-  bool baHasValue = parsedArgs2.hasValue<TestType, Arg3>();
-  EXPECT_TRUE(baHasValue);
-  int baValue = parsedArgs2.getValue<TestType, Arg3>();
-  EXPECT_EQ(baValue, 123);
+  arg3HasValue = parsedArgs2.hasValue<TestType, Arg3>();
+  EXPECT_TRUE(arg3HasValue);
+  arg3Value = parsedArgs2.getValue<TestType, Arg3>();
+  EXPECT_EQ(arg3Value, 123);
 
-  bool bbHasValue = parsedArgs2.hasValue<TestType, Arg1>();
-  EXPECT_TRUE(bbHasValue);
-  std::string bbValue = parsedArgs2.getValue<TestType, Arg1>();
-  EXPECT_STREQ(bbValue.c_str(), "val1");
+  arg1HasValue = parsedArgs2.hasValue<TestType, Arg1>();
+  EXPECT_TRUE(arg1HasValue);
+  arg1Value = parsedArgs2.getValue<TestType, Arg1>();
+  EXPECT_STREQ(arg1Value.c_str(), "val1");
 
-  bool bcHasValue = parsedArgs2.hasValue<s2::OtherType2, s2::X>();
-  EXPECT_TRUE(bcHasValue);
-  bool bcValue = parsedArgs2.getValue<s2::OtherType2, s2::X>();
-  EXPECT_TRUE(bcValue);
+  other2XHasValue = parsedArgs2.hasValue<s2::OtherType2, s2::X>();
+  EXPECT_TRUE(other2XHasValue);
+  other2XValue = parsedArgs2.getValue<s2::OtherType2, s2::X>();
+  EXPECT_TRUE(other2XValue);
 
-  bool bdHasValue = parsedArgs.hasValue<TestType, Arg2>();
-  EXPECT_TRUE(bdHasValue);
-  bool bdValue = parsedArgs.getValue<TestType, Arg2>();
-  EXPECT_FALSE(bdValue);
-
-  bool beHasValue = parsedArgs.hasValue<TestType, Arg5>();
-  EXPECT_FALSE(beHasValue);
-
-  bool bfHasValue = parsedArgs.hasValue<TestType, Arg4>();
-  EXPECT_TRUE(bfHasValue);
-  float bfValue = parsedArgs.getValue<TestType, Arg4>();
-  EXPECT_FLOAT_EQ(bfValue, 23.8);
+  arg2HasValue = parsedArgs.hasValue<TestType, Arg2>();
+  EXPECT_TRUE(arg2HasValue);
+  arg2Value = parsedArgs.getValue<TestType, Arg2>();
+  EXPECT_FALSE(arg2Value);
 
   // the function should throw if a required argument is not provided
   auto throwOnMissingReq = []() {

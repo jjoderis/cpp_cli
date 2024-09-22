@@ -14,12 +14,12 @@ int main(int argc, const char **argv) {
     auto res = cpp_cli::parseProgramArgumentsFromCL(
         argc,
         argv,
-        cpp_cli::NamedOptionalArgument<ArgNames, Height, unsigned int>{"height"},
-        cpp_cli::NamedOptionalArgument<ArgNames, Width, unsigned int>{"width"},
-        cpp_cli::NamedOptionalArgument<ArgNames, Float, float>{"float"},
-        cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>{"name", 'n'},
-        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'},
-        cpp_cli::NamedOptionalArgument<ArgNames, Output, std::filesystem::path>{"output", 'o'}
+        cpp_cli::NamedArgument<ArgNames, Height, unsigned int>{"height"},
+        cpp_cli::NamedArgument<ArgNames, Width, unsigned int>{"width"},
+        cpp_cli::NamedArgument<ArgNames, Float, float>{"float", 0, "", std::make_shared<float>(0.0f)},
+        cpp_cli::NamedArgument<ArgNames, Name, std::string>{"name", 'n'},
+        cpp_cli::NamedArgument<OtherArgNames, Active, bool>{"active", 'a'},
+        cpp_cli::NamedArgument<ArgNames, Output, std::filesystem::path>{"output", 'o'}
     );
 
     auto args = std::get<0>(res);
