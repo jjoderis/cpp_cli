@@ -19,9 +19,11 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
 endif()
 
 set(SOURCES
-    ${SRC_DIR}/util/CLIException.cpp
     ${SRC_DIR}/CLArgument/CLArgument.cpp
-    ${SRC_DIR}/ProgramArguments.cpp
+    ${SRC_DIR}/CLIException/CLIException.cpp
+    ${SRC_DIR}/ProgramSettings/ProgramSettings.cpp
+    ${SRC_DIR}/CLISettingsParser/CLISettingsParser.cpp
+    ${SRC_DIR}/ValueParser/ValueParser.cpp
 )
 
 add_library(cpp_cli INTERFACE)

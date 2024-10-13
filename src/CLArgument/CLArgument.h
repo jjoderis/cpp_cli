@@ -1,168 +1,52 @@
 #ifndef CL_ARGUMENT_H
 #define CL_ARGUMENT_H
 
-#include <functional>
-#include <memory>
-#include <sstream>
+#include <optional>
 #include <string>
 
-#include "util/CLIException.h"
-
 namespace cpp_cli {
-template <typename T>
-std::shared_ptr<T> parse(const std::string &toParse);
-// {
-//   static_assert(
-//       false,
-//       "Please provide a parse implementation that returns a shared ptr of type () with signature "
-//       "std::shared_ptr<your-type>(const char*)\n"
-//   );
 
-//   return std::shared_ptr<T>{};
-// }
+class CLArgumentBuilder;
 
-template <typename ValueType>
-class CL_Argument {
+class CLArgument {
  public:
-  const char *longOpt;
-  char shortOpt;
-  std::string description;
-  std::shared_ptr<ValueType> value{};
+  bool hasLong() const;
+  bool hasShort() const;
+  bool hasDescription() const;
 
-  bool hasLong() const { return longOpt != nullptr; }
+  const char *getLong() const;
+  char getShort() const;
+  const std::string &getDescription() const;
 
-  bool hasShort() const { return shortOpt != '\0'; }
-
-  bool hasValue() const { return value.get() != nullptr; }
-
-  bool hasDescription() const { return !description.empty(); }
-
-  bool isRequired() const { return !std::is_same<bool, ValueType>::value && !hasValue(); }
-
-  bool hasValidator() const { return m_validator != nullptr; }
-
-  std::string getManualString(int margin = 2) const {
-    std::string marg{};
-    marg.append(margin, ' ');
-    std::stringstream s;
-    s << marg;
-    if (hasShort()) s << '-' << shortOpt;
-    if (hasShort() && hasLong()) s << ", ";
-    if (hasLong()) s << "--" << longOpt;
-    if (hasDescription()) s << marg << description;
-    return s.str();
-  }
-
-  std::tuple<int, int, int> getFlagIndex(int argc, const char **argv) {
-    int longFlagIndex = hasLong() ? 1 : argc;
-    for (; longFlagIndex < argc; ++longFlagIndex) {
-      std::string a = std::string{"--"}.append(longOpt);
-      std::string b{argv[longFlagIndex]};
-      if (a.compare(b) == 0) break;
-    }
-    int shortFlagIndex = hasShort() ? 1 : argc;
-    for (; shortFlagIndex < argc; ++shortFlagIndex) {
-      std::string a = std::string{"-"}.append(1, shortOpt);
-      std::string b{argv[shortFlagIndex]};
-      if (a.compare(b) == 0) break;
-    }
-
-    if (longFlagIndex < argc && shortFlagIndex < argc) {
-      std::string errMessage{"Provided values for both the short (%s) and long (%s) version of a program parameter!"};
-      throw FlagException(errMessage, "", longOpt, shortOpt);
-    }
-
-    return std::tuple<int, int, int>{
-        longFlagIndex < argc ? longFlagIndex : shortFlagIndex, longFlagIndex, shortFlagIndex
-    };
-  }
-
-  void validate(const std::string &parsedLongFlag, char parsedShortFlag) {
-    if (hasValidator()) m_validator(*value.get(), parsedLongFlag, parsedShortFlag);
-  }
-
-  CL_Argument(
-      const char *longOpt = nullptr,
-      char shortOpt = 0,
-      const std::string &d = "",
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
-      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
-  )
-      : longOpt{longOpt}, shortOpt{shortOpt}, description{d}, value{defaultVal}, m_validator{validator} {
-    if (!longOpt && !shortOpt) {
-      throw CLIException{
-          "CL_Argument expects either a longOpt for flags of the form --flag or a shortOpt for flags of the "
-          "form "
-          "-f."
-      };
-    }
-
-    if (longOpt != nullptr && longOpt[0] == '-') {
-      throw CLIException{
-          "Please omit the - sign at the start of the given longOpt. If you want to handle the flag --arg just "
-          "provide the longOpt \"arg\"!"
-      };
-    }
-  }
+  std::string getManualString(int margin = 2) const;
 
  private:
-  std::function<void(const ValueType &, const std::string &, char)> m_validator;
+  CLArgument();
+
+  const char *m_long{nullptr};
+  char m_short{0};
+  std::string m_description{""};
+
+  friend CLArgumentBuilder;
 };
 
-template <typename ArgNames, ArgNames Name, typename ValueType>
-class NamedArgument : public CL_Argument<ValueType> {
+class CLArgumentBuilder {
  public:
-  NamedArgument(
-      const char *longOpt = nullptr,
-      char shortOpt = '\0',
-      const std::string &d = std::string{},
-      std::shared_ptr<ValueType> defaultVal = std::shared_ptr<ValueType>{},
-      std::function<void(const ValueType &, const std::string &, char)> validator = nullptr
-  )
-      : CL_Argument<ValueType>(longOpt, shortOpt, d, defaultVal, validator) {
-    this->value = defaultVal;
-  }
+  CLArgumentBuilder &addLong(const char *longOpt);
+
+  CLArgumentBuilder &addShort(char shortOpt);
+
+  CLArgumentBuilder &addDescription(const std::string &d);
+
+  CLArgument build();
+
+ private:
+  CLArgument m_argument{};
 };
 
-template <typename ValueType>
-void parseArgFromCL(int argc, const char **argv, CL_Argument<ValueType> &arg) {
-  std::tuple<int, int, int> indices = arg.getFlagIndex(argc, argv);
-  int flagIndex = std::get<0>(indices);
-  int longIndex = std::get<1>(indices);
+int getFlagIndex(const CLArgument &clArg, int argc, const char **argv);
+std::optional<std::string> getFlagValue(const CLArgument &clArg, int argc, const char **argv);
 
-  if (flagIndex < argc) {
-    if (flagIndex + 1 >= argc || std::string{argv[flagIndex + 1]}.substr(0, 2).compare("--") == 0) {
-      std::string message{"Flag %s is not followed by a value!"};
-      throw FlagException(message, "", longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
-    }
-
-    try {
-      arg.value = parse<ValueType>(argv[flagIndex + 1]);
-    } catch (std::exception const &err) {
-      std::string message{"Ran into an error when parsing the value for flag %s. "};
-      throw FlagException(
-          message, err.what(), longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0'
-      );
-    }
-
-    arg.validate(longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
-
-  } else if (arg.isRequired()) {
-    if (arg.hasLong() && arg.hasShort()) {
-      std::string errMessage{"Missing a required function argument (%s, %s)!"};
-      throw FlagException(errMessage, "", arg.longOpt, arg.shortOpt);
-    } else if (arg.hasLong()) {
-      std::string errMessage{"Missing a required function argument (%s)!"};
-      throw FlagException(errMessage, "", arg.longOpt);
-    } else {
-      std::string errMessage{"Missing a required function argument (%s)!"};
-      throw FlagException(errMessage, "", "", arg.shortOpt);
-    }
-  }
-}
-
-template <>
-void parseArgFromCL(int argc, const char **argv, CL_Argument<bool> &arg);
 };  // namespace cpp_cli
 
 #endif
