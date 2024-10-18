@@ -1,100 +1,99 @@
 #include "CLArgument.h"
 
-#include <filesystem>
-#include <iostream>
-#include <limits>
+#include <sstream>
 
-#include "../util/CLIException.h"
+#include "../CLIException/CLIException.h"
 
 namespace cpp_cli {
 
-template <>
-std::shared_ptr<int> parse<int>(const std::string &toParse) {
-  std::size_t end;
-  try {
-    int parsed = std::stoi(toParse, &end);
-    if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
-    return std::make_shared<int>(parsed);
-  } catch (std::invalid_argument const &err) {
-    std::string msg{"Invalid argument ("};
-    msg.append(toParse).append(") for an argument of type int.");
-    throw CLIException(msg);
-  } catch (std::out_of_range const &err) {
-    std::string msg{"Value ("};
-    msg.append(toParse).append(") does not fit into an argument of type int.");
-    throw CLIException(msg);
-  }
+CLArgument::CLArgument() {}
+
+bool CLArgument::hasLong() const { return m_long != nullptr; }
+bool CLArgument::hasShort() const { return m_short != '\0'; }
+bool CLArgument::hasDescription() const { return !m_description.empty(); }
+
+const char* CLArgument::getLong() const { return m_long; }
+char CLArgument::getShort() const { return m_short; }
+const std::string& CLArgument::getDescription() const { return m_description; }
+
+std::string CLArgument::getManualString(int margin) const {
+  std::string marg{};
+  marg.append(margin, ' ');
+  std::stringstream s;
+  s << marg;
+  if (hasShort()) s << '-' << m_short;
+  if (hasShort() && hasLong()) s << ", ";
+  if (hasLong()) s << "--" << m_long;
+  if (hasDescription()) s << marg << m_description;
+  return s.str();
 }
-template <>
-std::shared_ptr<unsigned int> parse<unsigned int>(const std::string &toParse) {
-  std::size_t end;
-  unsigned long parsed;
-  try {
-    parsed = std::stoul(toParse, &end);
-    if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
-  } catch (std::invalid_argument const &err) {
-    std::string msg{"Invalid argument ("};
-    msg.append(toParse).append(") for an argument of type unsigned int.");
-    throw CLIException(msg);
-  } catch (std::out_of_range const &err) {
-    std::string msg{"Value ("};
-    msg.append(toParse).append(") does not fit into an argument of type unsigned int.");
-    throw CLIException(msg);
+
+CLArgumentBuilder& CLArgumentBuilder::addLong(const char* longOpt) {
+  if (longOpt != nullptr && longOpt[0] == '-') {
+    throw CLIException{
+        "Please omit the - sign at the start of the given longOpt. If you want to handle the flag --arg just "
+        "provide the longOpt \"arg\"!"
+    };
   }
 
-  if (toParse.find('-') != std::string::npos)
-    throw std::invalid_argument("Negative number not allowed as value of an unsigned int.");
-
-  if (parsed > std::numeric_limits<unsigned int>::max())
-    throw std::range_error("The given value exceeds the limits of an unsigned int!");
-
-  return std::make_shared<unsigned int>(parsed);
+  m_argument.m_long = longOpt;
+  return *this;
 }
-template <>
-std::shared_ptr<float> parse<float>(const std::string &toParse) {
-  std::size_t end;
-  try {
-    float parsed = std::stof(toParse, &end);
-    if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
-    return std::make_shared<float>(parsed);
-  } catch (std::invalid_argument const &err) {
-    std::string msg{"Invalid argument ("};
-    msg.append(toParse).append(") for an argument of type float.");
-    throw CLIException(msg);
-  } catch (std::out_of_range const &err) {
-    std::string msg{"Value ("};
-    msg.append(toParse).append(") does not fit into an argument of type float.");
-    throw CLIException(msg);
+
+CLArgumentBuilder& CLArgumentBuilder::addShort(char shortOpt) {
+  m_argument.m_short = shortOpt;
+  return *this;
+}
+
+CLArgumentBuilder& CLArgumentBuilder::addDescription(const std::string& d) {
+  m_argument.m_description = d;
+  return *this;
+}
+
+CLArgument CLArgumentBuilder::build() {
+  if (!m_argument.m_long && !m_argument.m_short) {
+    throw CLIException{
+        "CLArgument expects either a longOpt for flags of the form --flag or a shortOpt for flags of the "
+        "form "
+        "-f."
+    };
+  };
+
+  return m_argument;
+}
+
+int getFlagIndex(const CLArgument& clArg, int argc, const char** argv) {
+  int longFlagIndex = clArg.hasLong() ? 1 : argc;
+  for (; longFlagIndex < argc; ++longFlagIndex) {
+    std::string a = std::string{"--"}.append(clArg.getLong());
+    std::string b{argv[longFlagIndex]};
+    if (a.compare(b) == 0) break;
   }
-}
-template <>
-std::shared_ptr<std::string> parse<std::string>(const std::string &toParse) {
-  return std::make_shared<std::string>(toParse);
-}
-
-template <>
-std::shared_ptr<std::filesystem::path> cpp_cli::parse<std::filesystem::path>(const std::string &toParse) {
-  std::filesystem::path path{toParse};
-  path = std::filesystem::canonical(path);
-  return std::make_shared<std::filesystem::path>(path);
-}
-
-template <>
-void parseArgFromCL(int argc, const char **argv, CL_Argument<bool> &arg) {
-  std::tuple<int, int, int> indices = arg.getFlagIndex(argc, argv);
-  int flagIndex = std::get<0>(indices);
-  int longIndex = std::get<1>(indices);
-
-  if (flagIndex < argc) {
-    if (flagIndex + 1 < argc && std::string{argv[flagIndex + 1]}.substr(0, 1).compare("-") != 0) {
-      std::string message{"Flag %s which is of a bool type should not be followed by a value!"};
-      throw FlagException(message, "", longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
-    }
-
-    arg.value = std::make_shared<bool>(true);
-  } else {
-    arg.value = std::make_shared<bool>(false);
+  int shortFlagIndex = clArg.hasShort() ? 1 : argc;
+  for (; shortFlagIndex < argc; ++shortFlagIndex) {
+    std::string a = std::string{"-"}.append(1, clArg.getShort());
+    std::string b{argv[shortFlagIndex]};
+    if (a.compare(b) == 0) break;
   }
+
+  if (longFlagIndex < argc && shortFlagIndex < argc) {
+    std::string errMessage{"Provided values for both the short (%s) and long (%s) version of a program parameter!"};
+    throw FlagException(errMessage, "", clArg.getLong(), clArg.getShort());
+  }
+
+  return longFlagIndex < argc ? longFlagIndex : shortFlagIndex;
+}
+
+std::optional<std::string> getFlagValue(const CLArgument& clArg, int argc, const char** argv) {
+  int flagIndex = getFlagIndex(clArg, argc, argv);
+
+  if (flagIndex >= argc) return {};
+
+  if (flagIndex + 1 >= argc || std::string{argv[flagIndex + 1]}.substr(0, 2).compare("--") == 0) {
+    return {};
+  }
+
+  return {argv[flagIndex + 1]};
 }
 
 }  // namespace cpp_cli
