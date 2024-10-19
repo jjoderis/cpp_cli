@@ -1,20 +1,23 @@
-#include "CLArgument.h"
+#include "ValueParser.h"
 
 #include <filesystem>
-#include <iostream>
 #include <limits>
 
-#include "../util/CLIException.h"
+#include "../CLIException/CLIException.h"
 
 namespace cpp_cli {
+namespace cpp_cli_internal {
 
+// defining a few default parsers for frequent types
+
+// INT
 template <>
-std::shared_ptr<int> parse<int>(const std::string &toParse) {
+int parse<int>(const std::string &toParse) {
   std::size_t end;
   try {
     int parsed = std::stoi(toParse, &end);
     if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
-    return std::make_shared<int>(parsed);
+    return parsed;
   } catch (std::invalid_argument const &err) {
     std::string msg{"Invalid argument ("};
     msg.append(toParse).append(") for an argument of type int.");
@@ -25,8 +28,10 @@ std::shared_ptr<int> parse<int>(const std::string &toParse) {
     throw CLIException(msg);
   }
 }
+
+// UNSIGNED INT
 template <>
-std::shared_ptr<unsigned int> parse<unsigned int>(const std::string &toParse) {
+unsigned int parse<unsigned int>(const std::string &toParse) {
   std::size_t end;
   unsigned long parsed;
   try {
@@ -43,20 +48,22 @@ std::shared_ptr<unsigned int> parse<unsigned int>(const std::string &toParse) {
   }
 
   if (toParse.find('-') != std::string::npos)
-    throw std::invalid_argument("Negative number not allowed as value of an unsigned int.");
+    throw CLIException("Negative number not allowed as value of an unsigned int.");
 
   if (parsed > std::numeric_limits<unsigned int>::max())
-    throw std::range_error("The given value exceeds the limits of an unsigned int!");
+    throw CLIException("The given value exceeds the limits of an unsigned int!");
 
-  return std::make_shared<unsigned int>(parsed);
+  return parsed;
 }
+
+// FLOAT
 template <>
-std::shared_ptr<float> parse<float>(const std::string &toParse) {
+float parse<float>(const std::string &toParse) {
   std::size_t end;
   try {
     float parsed = std::stof(toParse, &end);
     if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
-    return std::make_shared<float>(parsed);
+    return parsed;
   } catch (std::invalid_argument const &err) {
     std::string msg{"Invalid argument ("};
     msg.append(toParse).append(") for an argument of type float.");
@@ -67,34 +74,19 @@ std::shared_ptr<float> parse<float>(const std::string &toParse) {
     throw CLIException(msg);
   }
 }
+
+// STD::STRING
 template <>
-std::shared_ptr<std::string> parse<std::string>(const std::string &toParse) {
-  return std::make_shared<std::string>(toParse);
+std::string parse<std::string>(const std::string &toParse) {
+  return toParse;
 }
 
+// STD::FILESYSTEM::PATH
 template <>
-std::shared_ptr<std::filesystem::path> cpp_cli::parse<std::filesystem::path>(const std::string &toParse) {
+std::filesystem::path parse<std::filesystem::path>(const std::string &toParse) {
   std::filesystem::path path{toParse};
   path = std::filesystem::canonical(path);
-  return std::make_shared<std::filesystem::path>(path);
+  return path;
 }
-
-template <>
-void parseArgFromCL(int argc, const char **argv, CL_Argument<bool> &arg) {
-  std::tuple<int, int, int> indices = arg.getFlagIndex(argc, argv);
-  int flagIndex = std::get<0>(indices);
-  int longIndex = std::get<1>(indices);
-
-  if (flagIndex < argc) {
-    if (flagIndex + 1 < argc && std::string{argv[flagIndex + 1]}.substr(0, 1).compare("-") != 0) {
-      std::string message{"Flag %s which is of a bool type should not be followed by a value!"};
-      throw FlagException(message, "", longIndex < argc ? arg.longOpt : "", longIndex >= argc ? arg.shortOpt : '\0');
-    }
-
-    arg.value = std::make_shared<bool>(true);
-  } else {
-    arg.value = std::make_shared<bool>(false);
-  }
-}
-
+}  // namespace cpp_cli_internal
 }  // namespace cpp_cli

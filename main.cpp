@@ -1,46 +1,48 @@
-#include <CLArgument/CLArgument.h>
-#include <ProgramArguments.h>
-
-#include <filesystem>
-#include <iostream>
-#include <optional>
+#include "CLISetting/CLISetting.h"
+#include "CLISettingsParser/CLISettingsParser.h"
 
 enum ArgNames { Width, Height, Float, Name, Output };
 
 enum OtherArgNames { Active };
+enum TestType { Arg1, Arg2, Arg3, Arg4, Arg5 };
+
+namespace s1 {
+
+enum OtherType {
+  X,
+};
+
+};  // namespace s1
+
+namespace s2 {
+
+enum OtherType2 {
+  X,
+};
+
+};
 
 int main(int argc, const char **argv) {
-  try {
-    auto res = cpp_cli::parseProgramArgumentsFromCL(
-        argc,
-        argv,
-        cpp_cli::NamedOptionalArgument<ArgNames, Height, unsigned int>{"height"},
-        cpp_cli::NamedOptionalArgument<ArgNames, Width, unsigned int>{"width"},
-        cpp_cli::NamedOptionalArgument<ArgNames, Float, float>{"float"},
-        cpp_cli::NamedRequiredArgument<ArgNames, Name, std::string>{"name", 'n'},
-        cpp_cli::NamedOptionalArgument<OtherArgNames, Active, bool>{"active", 'a'},
-        cpp_cli::NamedOptionalArgument<ArgNames, Output, std::filesystem::path>{"output", 'o'}
-    );
-
-    auto args = std::get<0>(res);
-    if (args.hasValue<ArgNames, Output>()) {
-      std::cout << args.getValue<ArgNames, Output>() << '\n';
-    }
-  } catch (cpp_cli::CLIException &err) {
-    std::cout << err.what() << '\n';
-    exit(EXIT_FAILURE);
-  }
-
-  // auto settings = CLArgumentParser<ArgTypes>::parseOptions(
-  //     argc, argv, CL_Argument<ArgTypes, Width, int>{"width", 'w'},
-  //     CL_Argument<ArgTypes, Height, int>{"height", 'h', std::make_shared<int>(128)},
-  //     CL_Argument<ArgTypes, Name, std::string>{"name"});
-
-  // // settings.set<Width>(std::make_shared<int>(124));
-  // std::cout << settings.get<Width>() << "\n";
-  // std::cout << settings.get<Height>() << "\n";
-  // std::cout << settings.get<Name>() << "\n";
-  // // std::cout << settings.get<Active>() << "\n";
-
-  // std::cout << "End Program\n";
+  using cpp_cli::CLISettingBuilder;
+  cpp_cli::parseProgramSettingsFromCL(
+      argc,
+      argv,
+      CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+      CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+      CLISettingBuilder<s2::X, bool>{}.addLong("bool").build(),
+      CLISettingBuilder<Arg2, float>{}.addLong("unknown").addShort('u').build()
+  );
+  cpp_cli::parseProgramSettingsFromCL(
+      argc,
+      argv,
+      CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+      CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+      CLISettingBuilder<s2::X, bool>{}.addLong("bool").build()
+  );
+  cpp_cli::parseProgramSettingsFromCL(
+      argc,
+      argv,
+      CLISettingBuilder<Arg1, bool>{}.addLong("bool1").build(),
+      CLISettingBuilder<Arg3, bool>{}.addShort('b').build()
+  );
 }

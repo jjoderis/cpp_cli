@@ -1,94 +1,93 @@
 #ifndef TYPE_TRAITS_H
 #define TYPE_TRAITS_H
 
-#include <tuple>
-#include <typeinfo>
-#include <utility>
-
-#include "../CLArgument/CLArgument.h"
+#include <type_traits>
 
 namespace cpp_cli {
-
-// check for a combination of an enum with a argument type
+namespace cpp_cli_internal {
+// check if the given type defines a Setting
 template <typename T>
-struct is_named_arg : std::false_type {};
-template <typename ArgNames, ArgNames ArgName, typename T>
-struct is_named_arg<NamedRequiredArgument<ArgNames, ArgName, T>> : std::true_type {};
-template <typename ArgNames, ArgNames ArgName, typename T>
-struct is_named_arg<NamedOptionalArgument<ArgNames, ArgName, T>> : std::true_type {};
+struct is_setting : std::false_type {};
+template <template <auto, typename> typename Setting, auto SettingName, typename T>
+struct is_setting<Setting<SettingName, T>> : std::true_type {};
 
-// check if all elements in a parameter pack are named args
+// check if all elements in a parameter pack are settings
 template <typename... Args>
-struct is_named_arg_pack : std::false_type {};
+struct is_setting_pack : std::false_type {};
 template <typename T>
-struct is_named_arg_pack<T> : std::integral_constant<bool, is_named_arg<T>::value> {};
+struct is_setting_pack<T> : std::integral_constant<bool, is_setting<T>::value> {};
 template <typename T, typename... Rest>
-struct is_named_arg_pack<T, Rest...>
-    : std::conditional<is_named_arg<T>::value, is_named_arg_pack<Rest...>, std::false_type>::type {};
+struct is_setting_pack<T, Rest...>
+    : std::conditional<is_setting<T>::value, is_setting_pack<Rest...>, std::false_type>::type {};
 
-// get the information of a given named arg (the enum value used as its name, the enum type of the name, the type of the
-// value stored in the arg)
 template <typename T>
-struct named_arg_info;
-template <typename ArgNames, ArgNames Name, typename T>
-struct named_arg_info<NamedRequiredArgument<ArgNames, Name, T>> {
-  using arg_name_type = ArgNames;
-  static const ArgNames arg_name{Name};
-  using arg_value_type = T;
-};
-template <typename ArgNames, ArgNames Name, typename T>
-struct named_arg_info<NamedOptionalArgument<ArgNames, Name, T>> {
-  using arg_name_type = ArgNames;
-  static const ArgNames arg_name{Name};
-  using arg_value_type = T;
-};
+struct get_setting_type;
 
-/** find the index of a the arg with a specific name */
-template <int index, typename ArgNames, ArgNames Name, typename...>
-struct arg_index_by_name_impl : std::integral_constant<int, -1> {};
-template <int index, typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_index_by_name_impl<index, ArgNames, Name, T, Args...>
-    : arg_index_by_name_impl<index + 1, ArgNames, Name, Args...> {};
-template <int index, typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_index_by_name_impl<index, ArgNames, Name, NamedRequiredArgument<ArgNames, Name, T>, Args...>
-    : std::integral_constant<int, index> {};
-template <int index, typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_index_by_name_impl<index, ArgNames, Name, NamedOptionalArgument<ArgNames, Name, T>, Args...>
-    : std::integral_constant<int, index> {};
-
-template <typename ArgNames, ArgNames Name, typename... Args>
-struct arg_index_by_name : arg_index_by_name_impl<0, ArgNames, Name, Args...> {};
-
-/** get an arg from the list by its name */
-template <typename ArgNames, ArgNames Name, typename...>
-struct arg_by_name_impl {};
-template <typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_by_name_impl<ArgNames, Name, T, Args...> : arg_by_name_impl<ArgNames, Name, Args...> {};
-template <typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_by_name_impl<ArgNames, Name, NamedRequiredArgument<ArgNames, Name, T>, Args...> {
-  using type = NamedRequiredArgument<ArgNames, Name, T>;
+template <template <auto, typename, typename...> class t, auto Name, typename T, typename... Settings>
+struct get_setting_type<t<Name, T, Settings...>> {
+  typedef T type_t;
 };
-template <typename ArgNames, ArgNames Name, typename T, typename... Args>
-struct arg_by_name_impl<ArgNames, Name, NamedOptionalArgument<ArgNames, Name, T>, Args...> {
-  using type = NamedOptionalArgument<ArgNames, Name, T>;
+template <typename T>
+using get_setting_type_t = typename get_setting_type<T>::type_t;
+
+/** find the index of a the setting with a specific name */
+template <int index, auto TargetName, typename...>
+struct setting_index_by_name_impl : std::integral_constant<int, -1> {};
+template <int index, auto TargetName, typename T, typename... Rest>
+struct setting_index_by_name_impl<index, TargetName, T, Rest...>
+    : setting_index_by_name_impl<index + 1, TargetName, Rest...> {};
+template <
+    int index,
+    auto TargetName,
+    template <auto, typename> typename Setting,
+    typename SettingType,
+    typename... Rest>
+struct setting_index_by_name_impl<index, TargetName, Setting<TargetName, SettingType>, Rest...>
+    : std::integral_constant<int, index>::type {};
+
+template <auto SettingName, typename... Settings>
+struct setting_index_by_name : setting_index_by_name_impl<0, SettingName, Settings...> {};
+
+template <template <auto, typename> typename Setting, auto SettingName, typename SettingValueType>
+struct SettingTypeWrapper {
+  using type = Setting<SettingName, SettingValueType>;
 };
 
-template <typename ArgNames, ArgNames Name, typename... Args>
-struct arg_by_name : arg_by_name_impl<ArgNames, Name, Args...> {};
+/** get a setting from the list by its name */
+template <auto TargetName, typename...>
+struct setting_by_name_impl {};
+template <auto TargetName, typename T, typename... Rest>
+struct setting_by_name_impl<TargetName, T, Rest...> : setting_by_name_impl<TargetName, Rest...> {};
+template <auto TargetName, template <auto, typename> typename Setting, typename SettingType, typename... Rest>
+struct setting_by_name_impl<TargetName, Setting<TargetName, SettingType>, Rest...> {
+  using type = Setting<TargetName, SettingType>;
+};
 
-// check if every arg in the given pack has a different name
-template <typename... Args>
-struct args_have_unique_names : std::true_type {};
-template <typename T, typename... Args>
-struct args_have_unique_names<T, Args...>
+template <auto SettingName, typename... Settings>
+struct setting_by_name : setting_by_name_impl<SettingName, Settings...> {};
+
+// get the information of a given Setting (the enum value used as its name, the enum type of the name, the type of the
+// value stored for the setting)
+template <typename T>
+struct setting_info;
+template <template <auto, typename> typename Setting, auto SettingName, typename SettingType>
+struct setting_info<Setting<SettingName, SettingType>> {
+  using setting_name_type = decltype(SettingName);
+  static const decltype(SettingName) setting_name{SettingName};
+  using setting_value_type = SettingType;
+};
+
+// check if every setting in the given pack has a different name
+template <typename... Settings>
+struct settings_have_unique_names : std::true_type {};
+template <typename T, typename... Settings>
+struct settings_have_unique_names<T, Settings...>
     : std::conditional<
-          arg_index_by_name<typename named_arg_info<T>::arg_name_type, named_arg_info<T>::arg_name, Args...>::value ==
-              -1,
-          args_have_unique_names<Args...>,
+          setting_index_by_name<setting_info<T>::setting_name, Settings...>::value == -1,
+          settings_have_unique_names<Settings...>,
           std::false_type>::type {};
 
-// template <typename T> using prevent_deduction = typename std::common_type<T>::type;
-
+};  // namespace cpp_cli_internal
 };  // namespace cpp_cli
 
 #endif

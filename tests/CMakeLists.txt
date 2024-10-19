@@ -7,8 +7,11 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic-errors")
 add_subdirectory("${EXTERN_DIR}/googletest" "${BUILD_DIR}/external/googletest") 
 
 set(TEST_FILES
-    CLArgument.test.cpp
-    ProgramArguments.test.cpp
+    ValueParser/ValueParser.test.cpp
+    util/type_traits.test.cpp
+    ProgramSettings/ProgramSettings.test.cpp
+    CLISettingsParser/CLISettingsParser.test.cpp
+    CLISetting/CLISetting.test.cpp
 ) 
 
 # link test files against gtest_main 
