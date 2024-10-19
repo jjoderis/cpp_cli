@@ -1,48 +1,18 @@
 #ifndef CLI_SETTING_PARSER_H
 #define CLI_SETTING_PARSER_H
 
-#include <functional>
+#include <cstdlib>
+#include <iostream>
 #include <optional>
-#include <type_traits>
 #include <vector>
 
 #include "CLArgument/CLArgument.h"
 #include "CLIException/CLIException.h"
+#include "CLISetting/CLISetting.h"
 #include "ProgramSettings/ProgramSettings.h"
 #include "ValueParser/ValueParser.h"
 
 namespace cpp_cli {
-
-template <auto SettingName, typename SettingValueType>
-class CLISetting {
- public:
-  CLISetting() = delete;
-  CLISetting(const CLArgument &arg) : m_arg{arg} {}
-  CLISetting(const CLArgument &arg, const SettingValueType &defaultValue) : m_arg{arg}, m_defaultValue{defaultValue} {}
-  CLISetting(const CLArgument &arg, std::function<void(const SettingValueType &, const std::string &, char)> validator)
-      : m_arg{arg}, m_validator{validator} {}
-  CLISetting(
-      const CLArgument &arg,
-      const SettingValueType &defaultValue,
-      std::function<void(const SettingValueType &, const std::string &, char)> validator
-  )
-      : m_arg{arg}, m_defaultValue{defaultValue}, m_validator{validator} {}
-
-  const CLArgument &getArg() const { return m_arg; }
-  bool hasDefault() const { return m_defaultValue.has_value(); }
-  const SettingValueType &getDefault() const { return m_defaultValue.value(); }
-
-  void validate(const SettingValueType &value, const std::string &longFlag, char shortFlag) const {
-    if (m_validator != nullptr) {
-      m_validator(value, longFlag, shortFlag);
-    }
-  }
-
- private:
-  CLArgument m_arg;
-  std::optional<SettingValueType> m_defaultValue;
-  std::function<void(const SettingValueType &, const std::string &, char)> m_validator;
-};
 
 template <typename SettingValueType>
 std::optional<SettingValueType> parseCLISetting(
@@ -89,7 +59,6 @@ void parseProgramSettingsFromCLImpl(
     std::vector<bool> &handledFlags,
     ProgramSettings<AllSettings...> &progSettings,
     const CLISetting<SettingName, SettingValueType> &setting
-
 ) {
   const CLArgument &arg = setting.getArg();
 
@@ -139,14 +108,72 @@ ProgramSettings<Settings...> parseProgramSettingsFromCL(int argc, const char **a
   std::vector<bool> handledFlags(argc);
 
   for (int i = 1; i < argc; ++i) {
-    handledFlags[i] = false;
+    if (!std::string{argv[i]}.compare("--help"))
+      handledFlags[i] = true;
+    else
+      handledFlags[i] = false;
   }
 
   ProgramSettings<Settings...> progSettings{};
 
+  if (argc == 2 && !std::string{argv[1]}.compare("--help")) {
+    std::string helpString{};
+
+    size_t maxFlagStringLength = getMaxFlagsStringLength(settings...);
+    addToHelpString(helpString, maxFlagStringLength, settings...);
+
+    std::cout << helpString;
+    exit(EXIT_SUCCESS);
+  }
+
   parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progSettings, settings...);
 
   return progSettings;
+}
+
+template <auto SettingName, typename SettingValueType>
+std::string getSettingFlagsString(const CLISetting<SettingName, SettingValueType> &setting) {
+  auto arg = setting.getArg();
+  std::string flagString{};
+  if (arg.hasShort()) {
+    flagString.append("-").append(1, arg.getShort());
+    if (arg.hasLong()) flagString.append(", ");
+  }
+  if (arg.hasLong()) flagString.append("--").append(arg.getLong());
+
+  return flagString;
+}
+
+template <auto SettingName, typename SettingValueType, typename...>
+size_t getMaxFlagsStringLength(const CLISetting<SettingName, SettingValueType> &setting) {
+  return getSettingFlagsString(setting).length();
+}
+template <auto SettingName, typename SettingValueType, typename... Rest>
+size_t getMaxFlagsStringLength(const CLISetting<SettingName, SettingValueType> &setting, const Rest &...rest) {
+  return std::max(getSettingFlagsString(setting).length(), getMaxFlagsStringLength(rest...));
+}
+
+template <auto SettingName, typename SettingValueType, typename...>
+void addToHelpString(
+    std::string &helpString, size_t maxFlagsStringLength, const CLISetting<SettingName, SettingValueType> &setting
+) {
+  CLArgument arg{setting.getArg()};
+  helpString.append("  ");
+  std::string flagString{getSettingFlagsString(setting)};
+  if (flagString.length() < maxFlagsStringLength) flagString.append(maxFlagsStringLength - flagString.length(), ' ');
+  helpString.append(flagString);
+  if (arg.hasDescription()) helpString.append("     ").append(arg.getDescription());
+  helpString.append(1, '\n');
+}
+template <auto SettingName, typename SettingValueType, typename... Rest>
+void addToHelpString(
+    std::string &helpString,
+    size_t maxFlagsStringLenght,
+    const CLISetting<SettingName, SettingValueType> &setting,
+    const Rest &...rest
+) {
+  addToHelpString(helpString, maxFlagsStringLenght, setting);
+  addToHelpString(helpString, maxFlagsStringLenght, rest...);
 }
 
 }  // namespace cpp_cli

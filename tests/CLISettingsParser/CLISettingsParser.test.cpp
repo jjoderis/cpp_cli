@@ -2,7 +2,11 @@
 #include <gtest/gtest.h>
 #include <util/type_traits.h>
 
+#include <cstdlib>
+
 #include "CLArgument/CLArgument.h"
+#include "CLIException/CLIException.h"
+#include "gtest/gtest.h"
 
 enum TestType { Arg1, Arg2, Arg3, Arg4, Arg5 };
 
@@ -295,4 +299,30 @@ TEST(CLISettingParser_TEST, parsing_test) {
       },
       cpp_cli::FlagException
   );
+
+  auto testHelpString = []() {
+    const char *argvHelp[]{"./main", "--help"};
+    constexpr int argcHelp{sizeof(argvHelp) / sizeof(*argvHelp)};
+    cpp_cli::parseProgramSettingsFromCL(
+        argcHelp,
+        argvHelp,
+        CLISetting<Arg3, int>{CLArgumentBuilder{}.addLong("arg3").addDescription("This is the first argument.").build()
+        },
+        CLISetting<Arg1, float>{
+            CLArgumentBuilder{}.addLong("arg1").addShort('1').addDescription("This is the second argument.").build()
+        },
+        CLISetting<Arg5, std::string>{
+            CLArgumentBuilder{}.addShort('5').addDescription("This is the last argument.").build()
+        }
+    );
+  };
+  testing::internal::CaptureStdout();
+  EXPECT_EXIT(testHelpString(), ::testing::ExitedWithCode(0), "");
+  std::string helpString{
+      "  --arg3         This is the first argument.\n"
+      "  -1, --arg1     This is the second argument.\n"
+      "  -5             This is the last argument.\n"
+  };
+  std::string output = testing::internal::GetCapturedStdout();
+  EXPECT_STREQ(output.c_str(), helpString.c_str());
 }

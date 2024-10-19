@@ -1,7 +1,5 @@
 #include "CLArgument.h"
 
-#include <sstream>
-
 #include "../CLIException/CLIException.h"
 
 namespace cpp_cli {
@@ -16,24 +14,15 @@ const char* CLArgument::getLong() const { return m_long; }
 char CLArgument::getShort() const { return m_short; }
 const std::string& CLArgument::getDescription() const { return m_description; }
 
-std::string CLArgument::getManualString(int margin) const {
-  std::string marg{};
-  marg.append(margin, ' ');
-  std::stringstream s;
-  s << marg;
-  if (hasShort()) s << '-' << m_short;
-  if (hasShort() && hasLong()) s << ", ";
-  if (hasLong()) s << "--" << m_long;
-  if (hasDescription()) s << marg << m_description;
-  return s.str();
-}
-
 CLArgumentBuilder& CLArgumentBuilder::addLong(const char* longOpt) {
   if (longOpt != nullptr && longOpt[0] == '-') {
     throw CLIException{
         "Please omit the - sign at the start of the given longOpt. If you want to handle the flag --arg just "
         "provide the longOpt \"arg\"!"
     };
+  }
+  if (!std::string{"help"}.compare(longOpt)) {
+    throw CLIException{"The --help flag is automatically handled. Please use a different flag name."};
   }
 
   m_argument.m_long = longOpt;

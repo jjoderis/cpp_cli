@@ -10,6 +10,9 @@ TEST(Argument_TEST, class_test) {
   auto minusInLong = []() { CLArgumentBuilder{}.addLong("--flag"); };
   EXPECT_THROW(minusInLong(), cpp_cli::CLIException);
 
+  auto redefiningHelp = []() { CLArgumentBuilder{}.addLong("help"); };
+  EXPECT_THROW(redefiningHelp(), cpp_cli::CLIException);
+
   auto a = CLArgumentBuilder{}.addLong("longopt").build();
   EXPECT_TRUE(a.hasLong());
   EXPECT_FALSE(a.hasShort());

@@ -18,8 +18,6 @@ class CLArgument {
   char getShort() const;
   const std::string &getDescription() const;
 
-  std::string getManualString(int margin = 2) const;
-
  private:
   CLArgument();
 
