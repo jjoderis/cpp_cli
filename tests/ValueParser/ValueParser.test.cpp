@@ -5,7 +5,7 @@
 #include <filesystem>
 
 TEST(ValueParser_Test, parse_test) {
-  using cpp_cli::parse;
+  using cpp_cli::cpp_cli_internal::parse;
 
   EXPECT_EQ(parse<int>("123"), 123);
   EXPECT_EQ(parse<int>("-123"), -123);

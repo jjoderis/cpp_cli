@@ -6,6 +6,7 @@
 #include "../CLIException/CLIException.h"
 
 namespace cpp_cli {
+namespace cpp_cli_internal {
 
 // defining a few default parsers for frequent types
 
@@ -82,10 +83,10 @@ std::string parse<std::string>(const std::string &toParse) {
 
 // STD::FILESYSTEM::PATH
 template <>
-std::filesystem::path cpp_cli::parse<std::filesystem::path>(const std::string &toParse) {
+std::filesystem::path parse<std::filesystem::path>(const std::string &toParse) {
   std::filesystem::path path{toParse};
   path = std::filesystem::canonical(path);
   return path;
 }
-
+}  // namespace cpp_cli_internal
 }  // namespace cpp_cli

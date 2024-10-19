@@ -99,6 +99,7 @@ class CLISettingBuilder {
   CLISetting<SettingName, SettingValueType> m_setting{};
 };
 
+namespace cpp_cli_internal {
 template <auto SettingName, typename SettingValueType>
 int getFlagIndex(const CLISetting<SettingName, SettingValueType> &setting, int argc, const char **argv) {
   int longFlagIndex = setting.hasLong() ? 1 : argc;
@@ -135,6 +136,7 @@ std::optional<std::string> getFlagValue(
 
   return {argv[flagIndex + 1]};
 }
+}  // namespace cpp_cli_internal
 
 }  // namespace cpp_cli
 

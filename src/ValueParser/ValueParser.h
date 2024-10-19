@@ -4,7 +4,7 @@
 #include <string>
 
 namespace cpp_cli {
-
+namespace cpp_cli_internal {
 template <typename T>
 T parse(const std::string &toParse);
 // {
@@ -16,6 +16,7 @@ T parse(const std::string &toParse);
 
 //   return std::shared_ptr<T>{};
 // }
+}  // namespace cpp_cli_internal
 }  // namespace cpp_cli
 
 #endif

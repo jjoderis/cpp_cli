@@ -4,7 +4,7 @@
 #include <type_traits>
 
 namespace cpp_cli {
-
+namespace cpp_cli_internal {
 // check if the given type defines a Setting
 template <typename T>
 struct is_setting : std::false_type {};
@@ -87,6 +87,7 @@ struct settings_have_unique_names<T, Settings...>
           settings_have_unique_names<Settings...>,
           std::false_type>::type {};
 
+};  // namespace cpp_cli_internal
 };  // namespace cpp_cli
 
 #endif

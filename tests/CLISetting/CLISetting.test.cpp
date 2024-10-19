@@ -38,8 +38,8 @@ TEST(CLISetting_TEST, class_test) {
 
 TEST(CLISetting_TEST, parse_test) {
   using cpp_cli::CLISettingBuilder;
-  using cpp_cli::getFlagIndex;
-  using cpp_cli::getFlagValue;
+  using cpp_cli::cpp_cli_internal::getFlagIndex;
+  using cpp_cli::cpp_cli_internal::getFlagValue;
 
   const char *cl[]{"./main", "--arg1", "val1", "-i", "123", "--float", "12.5", "--bool"};
   constexpr int argc{sizeof(cl) / sizeof(*cl)};
