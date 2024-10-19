@@ -6,7 +6,6 @@
 #include <optional>
 #include <vector>
 
-#include "CLArgument/CLArgument.h"
 #include "CLIException/CLIException.h"
 #include "CLISetting/CLISetting.h"
 #include "ProgramSettings/ProgramSettings.h"
@@ -14,43 +13,74 @@
 
 namespace cpp_cli {
 
-template <typename SettingValueType>
-std::optional<SettingValueType> parseCLISetting(
-    int argc, const char **argv, const CLArgument &arg, std::vector<bool> &handledFlags
-) {
-  int argFlagIndex = getFlagIndex(arg, argc, argv);
+template <auto SettingName, typename SettingValueType>
+struct CLISettingParser {
+  static std::optional<SettingValueType> parse(
+      int argc,
+      const char **argv,
+      const CLISetting<SettingName, SettingValueType> &setting,
+      std::vector<bool> &handledFlags
+  ) {
+    int argFlagIndex = getFlagIndex(setting, argc, argv);
 
-  if (argFlagIndex < argc) {
-    std::optional<std::string> valueString = getFlagValue(arg, argc, argv);
+    if (argFlagIndex < argc) {
+      std::optional<std::string> valueString = getFlagValue(setting, argc, argv);
 
-    std::string flag = argv[argFlagIndex];
-    bool isLongFlag = flag.rfind("--", 0) == 0;
+      std::string flag = argv[argFlagIndex];
+      bool isLongFlag = flag.rfind("--", 0) == 0;
 
-    if (valueString.has_value()) {
-      handledFlags[argFlagIndex] = true;
-      handledFlags[argFlagIndex + 1] = true;
-      try {
-        return {parse<SettingValueType>(valueString.value())};
-      } catch (const cpp_cli::CLIException &e) {
-        std::string message{"Ran into an error when parsing the value for flag %s. (Original Error: "};
-        message.append(e.what());
-        message.append(")");
-        throw FlagException(message, "", isLongFlag ? arg.getLong() : "", !isLongFlag ? arg.getShort() : 0);
+      if (valueString.has_value()) {
+        handledFlags[argFlagIndex] = true;
+        handledFlags[argFlagIndex + 1] = true;
+        try {
+          return {cpp_cli::parse<SettingValueType>(valueString.value())};
+        } catch (const cpp_cli::CLIException &e) {
+          std::string message{"Ran into an error when parsing the value for flag %s. (Original Error: "};
+          message.append(e.what());
+          message.append(")");
+          throw FlagException(message, "", isLongFlag ? setting.getLong() : "", !isLongFlag ? setting.getShort() : 0);
+        }
+      } else {
+        std::string message{"Flag %s is missing a value!"};
+        throw FlagException(message, "", isLongFlag ? setting.getLong() : "", !isLongFlag ? setting.getShort() : 0);
       }
-    } else {
-      std::string message{"Flag %s is missing a value!"};
-      throw FlagException(message, "", isLongFlag ? arg.getLong() : "", !isLongFlag ? arg.getShort() : 0);
     }
-  }
 
-  return {};
-}
+    return {};
+  }
+};
 
 // boolean typed settings are handled differently
-template <>
-std::optional<bool> parseCLISetting(
-    int argc, const char **argv, const CLArgument &arg, std::vector<bool> &handledFlags
-);
+template <auto SettingName>
+struct CLISettingParser<SettingName, bool> {
+  static std::optional<bool> parse(
+      int argc, const char **argv, const CLISetting<SettingName, bool> &setting, std::vector<bool> &handledFlags
+  ) {
+    int argFlagIndex = getFlagIndex(setting, argc, argv);
+
+    // for boolean typed settings the existance of the flag is enough to set it to true
+    if (argFlagIndex < argc) {
+      bool followedBySomething = argFlagIndex < argc - 1;
+      if (followedBySomething) {
+        std::string followingArg{argv[argFlagIndex + 1]};
+
+        if (followingArg.rfind("-", 0) != 0) {
+          // if the type of the setting is bool we consider it to be true if the flag is present and we don't expect a
+          // following value
+          std::string message{"Flag %s which is of a bool type should not be followed by a value!"};
+          std::string flag = argv[argFlagIndex];
+          bool isLongFlag = flag.rfind("--", 0) == 0;
+          throw FlagException(message, "", isLongFlag ? setting.getLong() : "", !isLongFlag ? setting.getShort() : 0);
+        }
+      }
+
+      handledFlags[argFlagIndex] = true;
+      return std::optional<bool>{true};
+    }
+
+    return std::optional<bool>{false};
+  }
+};
 
 template <auto SettingName, typename SettingValueType, typename... AllSettings, typename...>
 void parseProgramSettingsFromCLImpl(
@@ -60,16 +90,15 @@ void parseProgramSettingsFromCLImpl(
     ProgramSettings<AllSettings...> &progSettings,
     const CLISetting<SettingName, SettingValueType> &setting
 ) {
-  const CLArgument &arg = setting.getArg();
-
-  std::optional<SettingValueType> parsedValue = parseCLISetting<SettingValueType>(argc, argv, arg, handledFlags);
+  std::optional<SettingValueType> parsedValue =
+      CLISettingParser<SettingName, SettingValueType>::parse(argc, argv, setting, handledFlags);
 
   if (parsedValue.has_value()) {
-    int argFlagIndex = getFlagIndex(arg, argc, argv);
+    int argFlagIndex = getFlagIndex(setting, argc, argv);
     if (argFlagIndex < argc) {
       std::string flag = argv[argFlagIndex];
       bool isLongFlag = flag.rfind("--", 0) == 0;
-      setting.validate(parsedValue.value(), isLongFlag ? arg.getLong() : "", !isLongFlag ? arg.getShort() : 0);
+      setting.validate(parsedValue.value(), isLongFlag ? setting.getLong() : "", !isLongFlag ? setting.getShort() : 0);
     }
     progSettings.template set<SettingName>(parsedValue.value());
   } else if (setting.hasDefault()) {
@@ -77,30 +106,30 @@ void parseProgramSettingsFromCLImpl(
   } else {
     // if there is no default value we consider the setting to be required from the user calling the program and throw
     // when it is missing
-    if (arg.hasLong() && arg.hasShort()) {
+    if (setting.hasLong() && setting.hasShort()) {
       std::string errMessage{"Missing a required program argument (%s, %s)!"};
-      throw FlagException(errMessage, "", arg.getLong(), arg.getShort());
-    } else if (arg.hasLong()) {
+      throw FlagException(errMessage, "", setting.getLong(), setting.getShort());
+    } else if (setting.hasLong()) {
       std::string errMessage{"Missing a required program argument (%s)!"};
-      throw FlagException(errMessage, "", arg.getLong());
+      throw FlagException(errMessage, "", setting.getLong());
     } else {
       std::string errMessage{"Missing a required program argument (%s)!"};
-      throw FlagException(errMessage, "", "", arg.getShort());
+      throw FlagException(errMessage, "", "", setting.getShort());
     }
   }
 }
 
-template <auto SettingName, typename SettingValueType, typename... AllArgs, typename... CurrArgs>
+template <auto SettingName, typename SettingValueType, typename... AllSettings, typename... RemainingSettings>
 void parseProgramSettingsFromCLImpl(
     int argc,
     const char **argv,
     std::vector<bool> &handledFlags,
-    ProgramSettings<AllArgs...> &progArgs,
-    const CLISetting<SettingName, SettingValueType> &arg,
-    const CurrArgs &...args
+    ProgramSettings<AllSettings...> &progArgs,
+    const CLISetting<SettingName, SettingValueType> &setting,
+    const RemainingSettings &...rest
 ) {
-  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progArgs, arg);
-  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progArgs, args...);
+  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progArgs, setting);
+  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progArgs, rest...);
 }
 
 template <typename... Settings>
@@ -133,13 +162,12 @@ ProgramSettings<Settings...> parseProgramSettingsFromCL(int argc, const char **a
 
 template <auto SettingName, typename SettingValueType>
 std::string getSettingFlagsString(const CLISetting<SettingName, SettingValueType> &setting) {
-  auto arg = setting.getArg();
   std::string flagString{};
-  if (arg.hasShort()) {
-    flagString.append("-").append(1, arg.getShort());
-    if (arg.hasLong()) flagString.append(", ");
+  if (setting.hasShort()) {
+    flagString.append("-").append(1, setting.getShort());
+    if (setting.hasLong()) flagString.append(", ");
   }
-  if (arg.hasLong()) flagString.append("--").append(arg.getLong());
+  if (setting.hasLong()) flagString.append("--").append(setting.getLong());
 
   return flagString;
 }
@@ -157,12 +185,11 @@ template <auto SettingName, typename SettingValueType, typename...>
 void addToHelpString(
     std::string &helpString, size_t maxFlagsStringLength, const CLISetting<SettingName, SettingValueType> &setting
 ) {
-  CLArgument arg{setting.getArg()};
   helpString.append("  ");
   std::string flagString{getSettingFlagsString(setting)};
   if (flagString.length() < maxFlagsStringLength) flagString.append(maxFlagsStringLength - flagString.length(), ' ');
   helpString.append(flagString);
-  if (arg.hasDescription()) helpString.append("     ").append(arg.getDescription());
+  if (setting.hasDescription()) helpString.append("     ").append(setting.getDescription());
   helpString.append(1, '\n');
 }
 template <auto SettingName, typename SettingValueType, typename... Rest>

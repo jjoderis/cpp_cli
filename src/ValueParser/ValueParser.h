@@ -1,10 +1,7 @@
 #ifndef VALUE_PARSER_H
 #define VALUE_PARSER_H
 
-#include <memory>
-#include <optional>
-
-#include "../CLArgument/CLArgument.h"
+#include <string>
 
 namespace cpp_cli {
 

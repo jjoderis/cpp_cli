@@ -4,8 +4,8 @@
 
 #include <cstdlib>
 
-#include "CLArgument/CLArgument.h"
 #include "CLIException/CLIException.h"
+#include "CLISetting/CLISetting.h"
 #include "gtest/gtest.h"
 
 enum TestType { Arg1, Arg2, Arg3, Arg4, Arg5 };
@@ -27,8 +27,7 @@ enum OtherType2 {
 };
 
 TEST(CLISettingParser_TEST, parsing_test) {
-  using cpp_cli::CLArgumentBuilder;
-  using cpp_cli::CLISetting;
+  using cpp_cli::CLISettingBuilder;
   // test the function that takes a number of settings and the program call information and returns a settings
   // container with the parsed values
   const char *cl[]{"./main", "--arg1", "val1", "-i", "123", "--float", "12.5", "--bool"};
@@ -36,13 +35,13 @@ TEST(CLISettingParser_TEST, parsing_test) {
   auto settings1 = cpp_cli::parseProgramSettingsFromCL(
       argc,
       cl,
-      CLISetting<Arg3, int>{CLArgumentBuilder{}.addShort('i').build()},
-      CLISetting<Arg1, std::string>{CLArgumentBuilder{}.addLong("arg1").build()},
-      CLISetting<s2::X, bool>{CLArgumentBuilder{}.addLong("bool").build()},
-      CLISetting<s1::X, float>{CLArgumentBuilder{}.addLong("float").build(), 42.5},
-      CLISetting<Arg5, float>{CLArgumentBuilder{}.addLong("unknown1").build(), 2},
-      CLISetting<Arg2, bool>{CLArgumentBuilder{}.addLong("unkown2").build()},
-      CLISetting<Arg4, float>{CLArgumentBuilder{}.addShort('u').build(), 23.8}
+      CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+      CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+      CLISettingBuilder<s2::X, bool>{}.addLong("bool").build(),
+      CLISettingBuilder<s1::X, float>{}.addLong("float").addDefault(42.5).build(),
+      CLISettingBuilder<Arg5, float>{}.addLong("unknown1").addDefault(2).build(),
+      CLISettingBuilder<Arg2, bool>{}.addLong("unkown2").build(),
+      CLISettingBuilder<Arg4, float>{}.addShort('u').addDefault(23.8).build()
   );
 
   // check that the values were parsed correctly
@@ -113,10 +112,10 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argc,
         argv,
-        CLISetting<Arg3, int>{CLArgumentBuilder{}.addShort('i').build()},
-        CLISetting<Arg1, std::string>{CLArgumentBuilder{}.addLong("arg1").build()},
-        CLISetting<s2::X, bool>{CLArgumentBuilder{}.addLong("bool").build()},
-        CLISetting<Arg2, float>{CLArgumentBuilder{}.addLong("unknown").build()}
+        CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+        CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+        CLISettingBuilder<s2::X, bool>{}.addLong("bool").build(),
+        CLISettingBuilder<Arg2, float>{}.addLong("unknown").build()
     );
   };
 
@@ -138,10 +137,10 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argc,
         argv,
-        CLISetting<Arg3, int>{CLArgumentBuilder{}.addShort('i').build()},
-        CLISetting<Arg1, std::string>{CLArgumentBuilder{}.addLong("arg1").build()},
-        CLISetting<s2::X, bool>{CLArgumentBuilder{}.addLong("bool").build()},
-        CLISetting<Arg2, float>{CLArgumentBuilder{}.addShort('u').build()}
+        CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+        CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+        CLISettingBuilder<s2::X, bool>{}.addLong("bool").build(),
+        CLISettingBuilder<Arg2, float>{}.addShort('u').build()
     );
   };
 
@@ -163,10 +162,10 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argc,
         argv,
-        CLISetting<Arg3, int>{CLArgumentBuilder{}.addShort('i').build()},
-        CLISetting<Arg1, std::string>{CLArgumentBuilder{}.addLong("arg1").build()},
-        CLISetting<s2::X, bool>{CLArgumentBuilder{}.addLong("bool").build()},
-        CLISetting<Arg2, float>{CLArgumentBuilder{}.addLong("unknown").addShort('u').build()}
+        CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+        CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+        CLISettingBuilder<s2::X, bool>{}.addLong("bool").build(),
+        CLISettingBuilder<Arg2, float>{}.addLong("unknown").addShort('u').build()
     );
   };
 
@@ -188,9 +187,9 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argc,
         argv,
-        CLISetting<Arg3, int>{CLArgumentBuilder{}.addShort('i').build()},
-        CLISetting<Arg1, std::string>{CLArgumentBuilder{}.addLong("arg1").build()},
-        CLISetting<s2::X, bool>{CLArgumentBuilder{}.addLong("bool").build()}
+        CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+        CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build(),
+        CLISettingBuilder<s2::X, bool>{}.addLong("bool").build()
     );
   };
 
@@ -212,8 +211,8 @@ TEST(CLISettingParser_TEST, parsing_test) {
   auto settingsBool = cpp_cli::parseProgramSettingsFromCL(
       argc3,
       cl3,
-      CLISetting<Arg1, bool>{CLArgumentBuilder{}.addLong("bool1").build()},
-      CLISetting<Arg3, bool>{CLArgumentBuilder{}.addShort('b').build()}
+      CLISettingBuilder<Arg1, bool>{}.addLong("bool1").build(),
+      CLISettingBuilder<Arg3, bool>{}.addShort('b').build()
   );
   bool boolArg1 = settingsBool.get<Arg1>();
   EXPECT_TRUE(boolArg1);
@@ -227,8 +226,8 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argc,
         argv,
-        CLISetting<Arg3, int>{CLArgumentBuilder{}.addShort('i').build()},
-        CLISetting<Arg1, std::string>{CLArgumentBuilder{}.addLong("arg1").build()}
+        CLISettingBuilder<Arg3, int>{}.addShort('i').build(),
+        CLISettingBuilder<Arg1, std::string>{}.addLong("arg1").build()
     );
   };
 
@@ -248,7 +247,7 @@ TEST(CLISettingParser_TEST, parsing_test) {
   auto throwOnFailedParsing = []() {
     const char *argv[]{"./main", "--int", "12.5"};
     constexpr int argc{sizeof(argv) / sizeof(*argv)};
-    cpp_cli::parseProgramSettingsFromCL(argc, argv, CLISetting<Arg3, int>{CLArgumentBuilder{}.addLong("int").build()});
+    cpp_cli::parseProgramSettingsFromCL(argc, argv, CLISettingBuilder<Arg3, int>{}.addLong("int").build());
   };
   // this tests _that_ the expected exception is thrown
   EXPECT_THROW(
@@ -276,15 +275,15 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argc,
         argv,
-        CLISetting<Arg3, float>{
-            CLArgumentBuilder{}.addLong("float").build(),
-            [](const float &val, const std::string &parsedLongFlag, char parsedShortFlag) {
+        CLISettingBuilder<Arg3, float>{}
+            .addLong("float")
+            .addValidator([](const float &val, const std::string &parsedLongFlag, char parsedShortFlag) {
               if (val < 0 || val > 1)
                 throw cpp_cli::FlagException(
                     "The value for %s should be in the range [0, 1]", "", parsedLongFlag, parsedShortFlag
                 );
-            }
-        }
+            })
+            .build()
     );
   };
 
@@ -306,14 +305,14 @@ TEST(CLISettingParser_TEST, parsing_test) {
     cpp_cli::parseProgramSettingsFromCL(
         argcHelp,
         argvHelp,
-        CLISetting<Arg3, int>{CLArgumentBuilder{}.addLong("arg3").addDescription("This is the first argument.").build()
-        },
-        CLISetting<Arg1, float>{
-            CLArgumentBuilder{}.addLong("arg1").addShort('1').addDescription("This is the second argument.").build()
-        },
-        CLISetting<Arg5, std::string>{
-            CLArgumentBuilder{}.addShort('5').addDescription("This is the last argument.").build()
-        }
+        CLISettingBuilder<Arg3, int>{}.addLong("arg3").addDescription("This is the first argument.").build(),
+        CLISettingBuilder<Arg1, float>{}
+            .addLong("arg1")
+            .addShort('1')
+            .addDescription("This is the second argument.")
+            .build(),
+        CLISettingBuilder<Arg5, std::string>{}.addShort('5').addDescription("This is the last argument.").build()
+
     );
   };
   testing::internal::CaptureStdout();
