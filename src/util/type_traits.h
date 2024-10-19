@@ -23,8 +23,8 @@ struct is_setting_pack<T, Rest...>
 template <typename T>
 struct get_setting_type;
 
-template <template <auto, typename, typename...> class t, auto Name, typename T, typename... Args>
-struct get_setting_type<t<Name, T, Args...>> {
+template <template <auto, typename, typename...> class t, auto Name, typename T, typename... Settings>
+struct get_setting_type<t<Name, T, Settings...>> {
   typedef T type_t;
 };
 template <typename T>
@@ -33,20 +33,20 @@ using get_setting_type_t = typename get_setting_type<T>::type_t;
 /** find the index of a the setting with a specific name */
 template <int index, auto TargetName, typename...>
 struct setting_index_by_name_impl : std::integral_constant<int, -1> {};
-template <int index, auto TargetName, typename T, typename... Args>
-struct setting_index_by_name_impl<index, TargetName, T, Args...>
-    : setting_index_by_name_impl<index + 1, TargetName, Args...> {};
+template <int index, auto TargetName, typename T, typename... Rest>
+struct setting_index_by_name_impl<index, TargetName, T, Rest...>
+    : setting_index_by_name_impl<index + 1, TargetName, Rest...> {};
 template <
     int index,
     auto TargetName,
     template <auto, typename> typename Setting,
     typename SettingType,
-    typename... args>
-struct setting_index_by_name_impl<index, TargetName, Setting<TargetName, SettingType>, args...>
+    typename... Rest>
+struct setting_index_by_name_impl<index, TargetName, Setting<TargetName, SettingType>, Rest...>
     : std::integral_constant<int, index>::type {};
 
-template <auto SettingName, typename... Args>
-struct setting_index_by_name : setting_index_by_name_impl<0, SettingName, Args...> {};
+template <auto SettingName, typename... Settings>
+struct setting_index_by_name : setting_index_by_name_impl<0, SettingName, Settings...> {};
 
 template <template <auto, typename> typename Setting, auto SettingName, typename SettingValueType>
 struct SettingTypeWrapper {
@@ -56,18 +56,18 @@ struct SettingTypeWrapper {
 /** get a setting from the list by its name */
 template <auto TargetName, typename...>
 struct setting_by_name_impl {};
-template <auto TargetName, typename T, typename... Args>
-struct setting_by_name_impl<TargetName, T, Args...> : setting_by_name_impl<TargetName, Args...> {};
-template <auto TargetName, template <auto, typename> typename Setting, typename SettingType, typename... Args>
-struct setting_by_name_impl<TargetName, Setting<TargetName, SettingType>, Args...> {
+template <auto TargetName, typename T, typename... Rest>
+struct setting_by_name_impl<TargetName, T, Rest...> : setting_by_name_impl<TargetName, Rest...> {};
+template <auto TargetName, template <auto, typename> typename Setting, typename SettingType, typename... Rest>
+struct setting_by_name_impl<TargetName, Setting<TargetName, SettingType>, Rest...> {
   using type = Setting<TargetName, SettingType>;
 };
 
-template <auto SettingName, typename... Args>
-struct setting_by_name : setting_by_name_impl<SettingName, Args...> {};
+template <auto SettingName, typename... Settings>
+struct setting_by_name : setting_by_name_impl<SettingName, Settings...> {};
 
 // get the information of a given Setting (the enum value used as its name, the enum type of the name, the type of the
-// value stored in the arg)
+// value stored for the setting)
 template <typename T>
 struct setting_info;
 template <template <auto, typename> typename Setting, auto SettingName, typename SettingType>
@@ -77,14 +77,14 @@ struct setting_info<Setting<SettingName, SettingType>> {
   using setting_value_type = SettingType;
 };
 
-// check if every arg in the given pack has a different name
-template <typename... Args>
+// check if every setting in the given pack has a different name
+template <typename... Settings>
 struct settings_have_unique_names : std::true_type {};
-template <typename T, typename... Args>
-struct settings_have_unique_names<T, Args...>
+template <typename T, typename... Settings>
+struct settings_have_unique_names<T, Settings...>
     : std::conditional<
-          setting_index_by_name<setting_info<T>::setting_name, Args...>::value == -1,
-          settings_have_unique_names<Args...>,
+          setting_index_by_name<setting_info<T>::setting_name, Settings...>::value == -1,
+          settings_have_unique_names<Settings...>,
           std::false_type>::type {};
 
 };  // namespace cpp_cli

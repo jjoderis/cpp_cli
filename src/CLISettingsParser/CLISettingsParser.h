@@ -21,17 +21,17 @@ struct CLISettingParser {
       const CLISetting<SettingName, SettingValueType> &setting,
       std::vector<bool> &handledFlags
   ) {
-    int argFlagIndex = getFlagIndex(setting, argc, argv);
+    int settingFlagIndex = getFlagIndex(setting, argc, argv);
 
-    if (argFlagIndex < argc) {
+    if (settingFlagIndex < argc) {
       std::optional<std::string> valueString = getFlagValue(setting, argc, argv);
 
-      std::string flag = argv[argFlagIndex];
+      std::string flag = argv[settingFlagIndex];
       bool isLongFlag = flag.rfind("--", 0) == 0;
 
       if (valueString.has_value()) {
-        handledFlags[argFlagIndex] = true;
-        handledFlags[argFlagIndex + 1] = true;
+        handledFlags[settingFlagIndex] = true;
+        handledFlags[settingFlagIndex + 1] = true;
         try {
           return {cpp_cli::parse<SettingValueType>(valueString.value())};
         } catch (const cpp_cli::CLIException &e) {
@@ -56,25 +56,25 @@ struct CLISettingParser<SettingName, bool> {
   static std::optional<bool> parse(
       int argc, const char **argv, const CLISetting<SettingName, bool> &setting, std::vector<bool> &handledFlags
   ) {
-    int argFlagIndex = getFlagIndex(setting, argc, argv);
+    int settingFlagIndex = getFlagIndex(setting, argc, argv);
 
     // for boolean typed settings the existance of the flag is enough to set it to true
-    if (argFlagIndex < argc) {
-      bool followedBySomething = argFlagIndex < argc - 1;
+    if (settingFlagIndex < argc) {
+      bool followedBySomething = settingFlagIndex < argc - 1;
       if (followedBySomething) {
-        std::string followingArg{argv[argFlagIndex + 1]};
+        std::string followingArg{argv[settingFlagIndex + 1]};
 
         if (followingArg.rfind("-", 0) != 0) {
           // if the type of the setting is bool we consider it to be true if the flag is present and we don't expect a
           // following value
           std::string message{"Flag %s which is of a bool type should not be followed by a value!"};
-          std::string flag = argv[argFlagIndex];
+          std::string flag = argv[settingFlagIndex];
           bool isLongFlag = flag.rfind("--", 0) == 0;
           throw FlagException(message, "", isLongFlag ? setting.getLong() : "", !isLongFlag ? setting.getShort() : 0);
         }
       }
 
-      handledFlags[argFlagIndex] = true;
+      handledFlags[settingFlagIndex] = true;
       return std::optional<bool>{true};
     }
 
@@ -94,9 +94,9 @@ void parseProgramSettingsFromCLImpl(
       CLISettingParser<SettingName, SettingValueType>::parse(argc, argv, setting, handledFlags);
 
   if (parsedValue.has_value()) {
-    int argFlagIndex = getFlagIndex(setting, argc, argv);
-    if (argFlagIndex < argc) {
-      std::string flag = argv[argFlagIndex];
+    int settingFlagIndex = getFlagIndex(setting, argc, argv);
+    if (settingFlagIndex < argc) {
+      std::string flag = argv[settingFlagIndex];
       bool isLongFlag = flag.rfind("--", 0) == 0;
       setting.validate(parsedValue.value(), isLongFlag ? setting.getLong() : "", !isLongFlag ? setting.getShort() : 0);
     }
@@ -124,12 +124,12 @@ void parseProgramSettingsFromCLImpl(
     int argc,
     const char **argv,
     std::vector<bool> &handledFlags,
-    ProgramSettings<AllSettings...> &progArgs,
+    ProgramSettings<AllSettings...> &progSettings,
     const CLISetting<SettingName, SettingValueType> &setting,
     const RemainingSettings &...rest
 ) {
-  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progArgs, setting);
-  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progArgs, rest...);
+  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progSettings, setting);
+  parseProgramSettingsFromCLImpl(argc, argv, handledFlags, progSettings, rest...);
 }
 
 template <typename... Settings>

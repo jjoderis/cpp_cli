@@ -20,8 +20,6 @@ endif()
 
 set(SOURCES
     ${SRC_DIR}/CLIException/CLIException.cpp
-    ${SRC_DIR}/ProgramSettings/ProgramSettings.cpp
-    ${SRC_DIR}/CLISettingsParser/CLISettingsParser.cpp
     ${SRC_DIR}/ValueParser/ValueParser.cpp
 )
 

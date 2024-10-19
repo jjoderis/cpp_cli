@@ -1,7 +1,6 @@
 #include "ValueParser.h"
 
 #include <filesystem>
-#include <iostream>
 #include <limits>
 
 #include "../CLIException/CLIException.h"
