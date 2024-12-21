@@ -36,6 +36,15 @@ class ProgramSettings {
     return std::get<SettingIndex>(m_settings);
   }
 
+  template <
+      auto SettingName,
+      int SettingIndex = cpp_cli_internal::setting_index_by_name<SettingName, Settings...>::value,
+      typename SettingValueType = typename cpp_cli_internal::setting_info<
+          typename cpp_cli_internal::setting_by_name<SettingName, Settings...>::type>::setting_value_type>
+  const SettingValueType& get() const {
+    return std::get<SettingIndex>(m_settings);
+  }
+
  private:
   std::tuple<cpp_cli_internal::get_setting_type_t<Settings>...> m_settings;
 };
