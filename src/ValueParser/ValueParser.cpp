@@ -85,7 +85,7 @@ std::string parse<std::string>(const std::string &toParse) {
 template <>
 std::filesystem::path parse<std::filesystem::path>(const std::string &toParse) {
   std::filesystem::path path{toParse};
-  path = std::filesystem::canonical(path);
+  path = std::filesystem::weakly_canonical(path);
   return path;
 }
 }  // namespace cpp_cli_internal
