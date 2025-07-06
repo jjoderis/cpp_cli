@@ -75,6 +75,25 @@ float parse<float>(const std::string &toParse) {
   }
 }
 
+// DOUBLE
+template <>
+double parse<double>(const std::string &toParse) {
+  std::size_t end;
+  try {
+    double parsed = std::stod(toParse, &end);
+    if (end != toParse.length()) throw std::invalid_argument("The given argument value contains non numeric elements");
+    return parsed;
+  } catch (std::invalid_argument const &err) {
+    std::string msg{"Invalid argument ("};
+    msg.append(toParse).append(") for an argument of type double.");
+    throw CLIException(msg);
+  } catch (std::out_of_range const &err) {
+    std::string msg{"Value ("};
+    msg.append(toParse).append(") does not fit into an argument of type double.");
+    throw CLIException(msg);
+  }
+}
+
 // STD::STRING
 template <>
 std::string parse<std::string>(const std::string &toParse) {
