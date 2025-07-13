@@ -9,6 +9,7 @@ namespace cpp_cli {
 class CLIException : public std::exception {
  public:
   CLIException(const std::string &message);
+  ~CLIException();
 
   const char *what() const noexcept override;
 

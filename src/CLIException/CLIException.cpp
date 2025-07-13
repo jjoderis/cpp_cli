@@ -8,6 +8,7 @@ namespace cpp_cli {
 
 CLIException::CLIException() {}
 CLIException::CLIException(const std::string &message) : m_message{message} {}
+CLIException::~CLIException() {}
 
 const char *CLIException::what() const noexcept { return m_message.c_str(); }
 
