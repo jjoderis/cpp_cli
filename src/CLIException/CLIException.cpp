@@ -65,5 +65,6 @@ FlagException::FlagException(
     m_message.append(")");
   }
 }
+FlagException::~FlagException() {}
 
 };  // namespace cpp_cli

@@ -21,6 +21,7 @@ class CLIException : public std::exception {
 class FlagException : public CLIException {
  public:
   FlagException() = delete;
+  ~FlagException();
 
   /**
    * Creates a CLIException with the given message. You can use %s in the message which will be automatically replaced
